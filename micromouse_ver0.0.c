@@ -61,7 +61,7 @@ int main(void)
 		
 		digit_partition();
 		
-		lcd_str("left front right");
+		lcd_str("left");
 		
 		lcd_pos(2,1);
 		lcd_data(0x30 + Left.dig100);
