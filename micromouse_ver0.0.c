@@ -2,7 +2,7 @@
  * micromouse_ver0.c
  *
  * Created: 2014/04/07 21:16:13
- *  Author: takemichi
+ *  Author: UEKI
  */ 
 
 
@@ -11,11 +11,19 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include "avr_lcd.h"
+#include "avr_moter.h"
 
-void Inti_Timer(void);					//タイマの初期設定
-void Init_ADC(void);					//AD変換の初期化設定
-void Inti_ADC_get(void);				//AD変換のchを切り替える関数
-void digit_partition(void);				//LCD表示のために取得値を桁ごとに分割
+//timer1のレジスタ設定
+void Inti_Timer1(void);
+
+//ADCのレジスタ設定
+void Init_ADC(void);
+
+//AD変換のchを切り替えて値を取得していく関数(いずれ別ファイル化)
+void Inti_ADC_get(void);
+
+//LCD表示のために取得値を桁ごとに分割する関数
+void digit_partition(void);
 
 //void encoder(void);
 
@@ -33,35 +41,111 @@ struct{
 	
 }Left = {0, 0, 0}, LeftFront = {0, 0, 0}, RightFront ={0, 0, 0}, Right ={0, 0, 0};
 
-ISR(TIMER1_COMPA_vect){
-		
-		Inti_ADC_get();
-}
 
 int main(void)
 {		
-	cli();
+	cli();		//割り込み禁止
 	
-	DDRA  = 0xF0;
-	PORTA = 0x00;
-	DDRC  = 0xFF;					
-	PORTC = 0x00;
-	DDRD  = 0xFF;						//PORTDを出力に設定
-	PORTD = 0x00;						
-	DDRB  = 0xFF;						//PORTBを出力に設定						
-	PORTB = 0x00;						//コンデンサチャージ開始
+	/*
+	 * 簡単なPORTの説明
+	 *
+	 * DDR_  方向レジスタ(0:入力 1:出力)
+	 * PORT_ 出力レジスタ(入力の場合 0:プルアップ禁止 1:プルアップ有効)
+	 *					 (出力の場合 0:Low 1:High)
+	 *
+	 */
 	
-	lcd_init();							//LCD初期化
-	Inti_Timer();						//タイマーレジスタ設定
-	Init_ADC();							//AD変換レジスタ設定
 	
-	sei();
+	/*
+	 *	PORTA
+	 *
+	 * 0: 右前センサADC入力
+	 * 1: 右センサADC入力
+	 * 2: 左センサADC入力
+	 * 3: 左前センサADC入力
+	 *
+	 * 4: 右前センサのLED吸い込み
+	 * 5: 右センサのLED吸い込み 
+	 * 6: 左センサのLED吸い込み
+	 * 7: 左前センサのLED吸い込み
+	 *
+	 */
+	DDRA  = 0b11110000;		//念のため…リトルエンディアンです
+	PORTA = 0b00000000;		//ADCで使用する際はプルアップ禁止(値が変化するため)
+	
+	/*
+	 *	PORTB
+	 *
+	 * 0: スイッチ(仮)
+	 * 1: スイッチ(仮)
+	 * 2: スイッチ(仮)
+	 * 3: 右モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
+	 * 4: 右モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
+	 * 5: 書き込み用ISPに使用(MOSI)
+	 * 6: 書き込み用ISPに使用(MISO)
+	 * 7: 書き込み用ISPに使用(SCK)
+	 *
+	 */
+	DDRB  = 0b00011000;						
+	PORTB = 0b00000111;
+	
+	/*
+	 *	PORTC
+	 *
+	 * 0: LCD表示用(RSの切り替え 0:コマンド 1:データ)
+	 * 1: LCD表示用(Eのフラグ設定　このbitが立ちがるとLCDにデータが送信される)
+	 * 2:
+	 * 3:
+	 * 4: LCD表示用(データバス)
+	 * 5: LCD表示用(データバス)
+	 * 6: LCD表示用(データバス)
+	 * 7: LCD表示用(データバス)
+	 *
+	 */
+	DDRC  = 0b11110011;					
+	PORTC = 0b00000000;
+	
+	/*
+	 *	PORTD
+	 *
+	 * 0: 右ロータリーエンコーダのパルス波Aを入力
+	 * 1: 右ロータリーエンコーダのパルス波Bを入力
+	 * 2: 左ロータリーエンコーダのパルス波Aを入力
+	 * 3: 左ロータリーエンコーダのパルス波Bを入力
+	 * 4: 
+	 * 5: 
+	 * 6: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
+	 * 7: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
+	 *
+	 */
+	DDRD  = 0b11000000;
+	PORTD = 0b00001111;
+	
+	//LCD初期化
+	lcd_init();
+	
+	//タイマレジスタ設定(0:右モーターPWM 1:姿勢制御関係呼び出し 2:左モーターPWM) 
+	Inti_Timer0();
+	Inti_Timer2();
+	
+	//AD変換レジスタ設定
+	//Init_ADC();
+	
+	sei();		//割り込み許可
 	
 	while(1){
 		
-		digit_partition();
 		
-		lcd_str("left");
+		Inti_CW_right(150);
+		Inti_CW_left(150);
+		_delay_ms(5000);
+		Inti_CCW_right(150);
+		Inti_CCW_left(150);
+		_delay_ms(5000);
+		
+		/*digit_partition();
+		
+		lcd_str("left front right");
 		
 		lcd_pos(2,1);
 		lcd_data(0x30 + Left.dig100);
@@ -83,7 +167,7 @@ int main(void)
 		lcd_data(0x30 + Right.dig10);
 		lcd_data(0x30 + Right.dig1);
 		
-		lcd_pos(1,1);
+		lcd_pos(1,1);*/
 
 	}
 
@@ -137,7 +221,7 @@ void Inti_ADC_get(void)
 //--------------------------------------------------------------------------------------------------------
 	//AD_ch0
 
-	PORTB = 0b00000001;			//LED(ch0)発行
+	PORTA = 0b00000001;			//LED(ch0)発行
 	
 	ADMUX = 0b00100000;			//入力をch0に切り替え
 	_delay_ms(5);				//切り替えが安定するまで待機
@@ -147,12 +231,12 @@ void Inti_ADC_get(void)
 	
 	Left_cnt = ADCH;			//値を確保
 
-	PORTB = 0b00000000;			//リチャージ
+	PORTA = 0b00000000;			//リチャージ
 
 	//--------------------------------------------------------------------------------------------------------
 	//AD_ch1
 	
-	PORTB = 0b00000010;			//LED(ch1)発光
+	PORTA = 0b00000010;			//LED(ch1)発光
 	
 	ADMUX = 0b00100001;			//入力をch1に切り替え
 	_delay_us(5);				//切り替えが安定するまで待機
@@ -162,12 +246,12 @@ void Inti_ADC_get(void)
 	
 	LeftFront_cnt = ADCH;		//値を確保
 
-	PORTB = 0b00000000;			//リチャージ
+	PORTA = 0b00000000;			//リチャージ
 	
 	//--------------------------------------------------------------------------------------------------------
 	//AD_ch2
 	
-	PORTB = 0b00000100;			//LED(ch2)発光
+	PORTA = 0b00000100;			//LED(ch2)発光
 	
 	ADMUX = 0b00100010;			//入力をch2に切り替え
 	_delay_us(5);				//切り替えが安定するまで待機
@@ -177,12 +261,12 @@ void Inti_ADC_get(void)
 	
 	RightFront_cnt = ADCH;		//値を確保
 
-	PORTB = 0b00000000;			//リチャージ
+	PORTA = 0b00000000;			//リチャージ
 	
 	//-------------------------------------------------------------------------------------------------------
 	//AD_ch3
 	
-	PORTB = 0b00001000;			//LED(ch3)発光
+	PORTA = 0b00001000;			//LED(ch3)発光
 	
 	ADMUX = 0b00100011;			//入力をch3に切り替え
 	_delay_us(5);				//切り替えが安定するまで待機
@@ -192,125 +276,139 @@ void Inti_ADC_get(void)
 
 	Right_cnt = ADCH;			//値を確保
 
-	PORTB = 0b00000000;			//リチャージ
+	PORTA = 0b00000000;			//リチャージ
 
 }
 
 
-//***********************************************************************************//
-//	Function Name :	Init_ADC														*//
-//	Titlle        : AD変換用レジスタの設定											*//
-//  Input         :	ADC0, ADC1, ADC2, ADC3, ADC4, ADC5								*//
-//  output        :																	*//
-//	Description   :	通常動作モード													*//
-//***********************************************************************************//
+/*
+ *
+ *	Function Name :	Init_ADC														
+ *	Titlle        : AD変換用レジスタの設定											
+ *  Input         :	ADC0, ADC1, ADC2, ADC3, ADC4, ADC5								
+ *  output        :	なし																
+ *	Description   :	通常動作モード
+ *
+ */
+
 void Init_ADC(void)
 {
-	//ADMUX(ADC Multiplexer Selct Register)
-	//	7: リザーブビット
-	//		#7 = 0
-	
-	//	6: 基準電圧選択
-	//		基準電圧としてVcc(5V)を使用する
-	//		#6 = 0
-	
-	//	5: 変換結果を右寄せにするか左寄せにするかを設定する
-	//		左寄せにする
-	//		#5 = 1
-	
-	//	4: リザーブビット
-	//		#4 = 0
-	
-	//	3,2,1,0: ADチャンネル選択
-	//		このビットをAD変換中にしても変換完了までは実行されない
-	//		とりあえずADC0に設定
-	//		#3 = 0, #2 = 0, #1 = 0, #0 = 0
+	/*
+	 * ADMUX(ADC Multiplexer Selct Register)
+	 *	
+	 *	7: リザーブビット
+	 *		#7 = 0
+	 *
+	 *	6: 基準電圧選択
+	 *		基準電圧としてVcc(5V)を使用する
+	 *		#6 = 0
+	 *
+	 *	5: 変換結果を右寄せにするか左寄せにするかを設定する
+	 *		左寄せにする
+	 *		#5 = 1
+	 *
+	 *		4: リザーブビット
+	 *		#4 = 0
+	 *
+	 *	3,2,1,0: ADチャンネル選択
+	 *		このビットをAD変換中にしても変換完了までは実行されない
+	 *		とりあえずADC0に設定
+	 *		#3 = 0, #2 = 0, #1 = 0, #0 = 0
+	 */
 	ADMUX = 0b00100000;
 	
-	//ADCSRA(ADC Control and Status Register A)
-	//	7: AD変換許可
-	//		AD変換を許可する
-	//		#7 = 1
-	
-	//	6: ADSC(ADC Start Conversion)	AD変換開始
-	//		とりあえず開始はまだしない
-	//		#6 = 0
-	
-	//	5: AD変換自動起動許可
-	//		#5 = 0
-	
-	//	4: AD変換完了割り込み要求フラグ
-	//		AD変換が完了し結果のレジスタが更新されるとこのフラグが'1'になる
-	//		とりあえず初期値を入力しておく
-	//		#4 = 0
-	
-	//	3: AD変換完了割り込み許可
-	//		割り込みを使用する場合は'1'にしておこう
-	//		#3 = 0
-	
-	//	2,1,0: AD変換クロック選択
-	//		ADCは変換スピードを早くしすぎると10ビット分しっかり
-	//		機能しないので50kHz～200KHzのクロック周波数に設定する
-	//		ATmega88Pの動作クロックは20MHzなので、
-	//		20M/128 ==> 156kHzとする　分周は/φ128
-	//		#2 = 1, #1 = 1, #0 = 1
+	/*
+	 * ADCSRA(ADC Control and Status Register A)
+	 *	
+	 *	7: AD変換許可
+	 *		AD変換を許可する
+	 *		#7 = 1
+	 *
+	 *	6: ADSC(ADC Start Conversion)	AD変換開始
+	 *		とりあえず開始はまだしない
+	 *		#6 = 0
+	 *
+	 *	5: AD変換自動起動許可
+	 *		#5 = 0
+	 *
+	 *	4: AD変換完了割り込み要求フラグ
+	 *		AD変換が完了し結果のレジスタが更新されるとこのフラグが'1'になる
+	 *		とりあえず初期値を入力しておく
+	 *		#4 = 0
+	 *
+	 *	3: AD変換完了割り込み許可
+	 *		割り込みを使用する場合は'1'にしておく
+	 *		#3 = 0
+	 *
+	 *	2,1,0: AD変換クロック選択
+	 *		ADCは変換スピードを早くしすぎると10ビット分しっかり
+	 *		機能しないので50kHz～200KHzのクロック周波数に設定する
+	 *		ATmega88Pの動作クロックは20MHzなので、
+	 *		20M/128 ==> 156kHzとする　分周は/φ128
+	 * 		#2 = 1, #1 = 1, #0 = 1
+	 */
 	ADCSRA = 0b10000110;
 	
-	//ADCSRB(ADC Control and Status Register B)
-	//	7:	リザーブビット
-	//		#7 = 0
-	
-	//	6:	よくわからん
-	//		#6 = 0
-	
-	//	5,4,3:	リザーブビット
-	//		#5 = 0, #4 = 0, #3 = 0
-	
-	//	2,1,0:	AD変換自動起動要因選択
-	//		連続変換動作
-	//		#2 = 0, #1 = 0, #0 = 0
+	/*
+	 * ADCSRB(ADC Control and Status Register B)
+	 *	7:	リザーブビット
+	 *		#7 = 0
+	 *
+	 *	6:	よくわからん
+	 *		#6 = 0
+	 *
+	 *	5,4,3:	リザーブビット
+	 *		#5 = 0, #4 = 0, #3 = 0
+	 *
+	 *	2,1,0:	AD変換自動起動要因選択
+	 *		連続変換動作
+	 *		#2 = 0, #1 = 0, #0 = 0
+	 */
 	ADCSRB = 0b00000000;
 	
-	//DIDR0(Digital Input Disable Register 0)
-	// 7,6: リザーブビット
-	//		#7 = 0, #6 = 0
-	
-	// 5,4,3,2,1,0: デジタル入力禁止
-	//		今回はAD変換のみで使用するので
-	//		すべて1にする
+	/*
+	 * DIDR0(Digital Input Disable Register 0)
+	 * 7,6: リザーブビット
+	 *		#7 = 0, #6 = 0
+	 *
+	 * 5,4,3,2,1,0: デジタル入力禁止
+	 *		今回はAD変換のみで使用するので
+	 *		すべて1にする
+	 */
 	DIDR0 = 0b00001111;
 }
 
 
-//***************************************************************************//
-//*	Function Name : レジスタ初期化関数										*//
-//*	Tittle        : タイマー0のレジスタ設定									*//
-//*	Input		  :	なし													*//
-//*	output        :	なし												　　*//
-//*	Descripution  : CTCを使って手軽にカウントする							*//
-//*					ISR(TIMER0_COMPA_vect)									*//
-//***************************************************************************//
-void Inti_Timer(void)
+/*
+ *	Function Name : Inti_Timer1
+ *	Tittle        : タイマー1のレジスタ設定
+ *	Input		  :	なし
+ *	output        :	なし
+ *	Descripution  : CTCを使って手軽にカウントする
+ *					ISR(TIMER1_COMPA_vect)
+ */
+ 
+void Inti_Timer1(void)
 {
-	//TCCR0A(Timer Counter0 Control Register A)
-	//	7,6: OC0Aから出力するPWM波の設定
+	//TCCR1A(Timer Counter1 Control Register A)
+	//	7,6: OC1Aから出力するPWM波の設定
 	//       何も出力しないので
 	//		 #7 = 0, #6 = 0
 	//
-	//	5,4: OC0Bから出力するPWM波の設定
+	//	5,4: OC1Bから出力するPWM波の設定
 	//       何も出力しないので
 	//       #5 = 0, #4 = 0
 	//
 	//	3,2: リザーブビット
 	//       #3 = 0, #2 = 0
 	//
-	//	1,0: PWM波形の種類の設定(下記のTCCR0Bにも設定が跨っているので注意)
+	//	1,0: PWM波形の種類の設定(下記のTCCR1Bにも設定が跨っているので注意)
 	//		 CTCモード
 	//       #1 = 1, #0 = 0
 	TCCR1A = 0b00000010;
 	
-	//TCCR0B(Timer Counter0 Control register B)
-	//	7,6: OC0A,OC0B 強制変更設定
+	//TCCR1B(Timer Counter1 Control register B)
+	//	7,6: OC1A,OC1B 強制変更設定
 	//		 これは非PWMモードを使用する際に設定する　今回は使用しない
 	//		 #7 = 0, #6 = 0
 	//
@@ -321,31 +419,31 @@ void Inti_Timer(void)
 	//       #3 = 0
 	//
 	//	2,1,0: 分周器設定
-	//         ATmega88Pの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
+	//         ATmega1284P-AUの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
 	//         分周は1/1024
 	//         20MHz/1024 ==> 約19kHz
 	//         #2 = 1, #1 = 0, #0 = 1
 	TCCR1B = 0b0000101;
 	
-	//TCNT0(Timer Counter0)
+	//TCNT1(Timer Counter1)
 	//		タイマカウンタ(8bit)に直接アクセスできる
 	//		初期値をいれる
 	TCNT1 = 0;
 	
 	
-	//OCR0A(Timer Counter0 Output Compare A Register)
+	//OCR1A(Timer Counter1 Output Compare A Register)
 	//      いつコンペアマッチAをさせるかを設定する(8bit)
 	//		今回は1秒カウントしたい
 	//      1クロックは19kHz(5*10^-5) 今回は100msをつくる。
 	//		100m/5*10^-5 = 約
 	OCR1A = 5;
 	
-	//OCR0B(Timer Counter0 Output Compare B Register)
+	//OCR1B(Timer Counter1 Output Compare B Register)
 	//		いつコンペアマッチBをさせるかを設定する(8bit)
 	//		今回は使用しない。
 	OCR1B = 0;
 
-	//TIMSK0(Timer Counter 0 Interrupt Mask Register)
+	//TIMSK1(Timer Counter 1 Interrupt Mask Register)
 	//		タイマ割り込みを許可するためのレジスタ
 	//	7,6,5,4,3: リザーブビット
 	//		#7-3 = 0
@@ -364,3 +462,4 @@ void Inti_Timer(void)
 	TIMSK1 = 0b00000010;
 
 }
+
