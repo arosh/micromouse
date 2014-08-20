@@ -25,7 +25,7 @@
 
 
 //とりあえずの回転テスト用関数
-void Inti_CW_right(unsigned char pwm)
+void Inti_CW_left(unsigned char pwm)
 {
 	TCCR0A = 0b10100011;		//出力設定初期化(AもBもPWM出力)
 	TCCR0A = 0b11000011;		//OC0Bを通常ポートに変更
@@ -34,7 +34,7 @@ void Inti_CW_right(unsigned char pwm)
 }
 
 //とりあえずの回転テスト用関数
-void Inti_CCW_right(unsigned char pwm)
+void Inti_CCW_left(unsigned char pwm)
 {
 	TCCR0A = 0b11110011;		//出力設定初期化(AもBもPWM出力)
 	TCCR0A = 0b00110011;		//OC0Aを通常ポートに変更
@@ -44,7 +44,7 @@ void Inti_CCW_right(unsigned char pwm)
 
 
 //とりあえずの回転テスト用関数
-void Inti_CW_left(unsigned char pwm)
+void Inti_CW_right(unsigned char pwm)
 {
 	TCCR2A = 0b11110011;		//出力設定初期化(AもBもPWM出力)
 	TCCR2A = 0b00110011;		//OC0Aを通常ポートに変更
@@ -53,7 +53,7 @@ void Inti_CW_left(unsigned char pwm)
 }
 
 //とりあえずの回転テスト用関数
-void Inti_CCW_left(unsigned char pwm)
+void Inti_CCW_right(unsigned char pwm)
 {
 	TCCR2A = 0b11110011;		//出力設定初期化(AもBもPWM出力)
 	TCCR2A = 0b11000011;		//OC0Bを通常ポートに変更
