@@ -27,10 +27,10 @@ void print_RotaryEncorder(void);
 void print_all_sensor(void);
 
 //timer1のレジスタ設定
-void Inti_Timer1(void);
+void Init_Timer1(void);
 
 //timer3のレジスタ設定
-void Inti_Timer3(void);
+void Init_Timer3(void);
 
 //LCD表示のためにセンサの取得値を桁ごとに分割する関数
 void S_digit_partition(void);
@@ -76,15 +76,15 @@ struct{
 
 ISR(TIMER1_COMPA_vect){
 	
-	Inti_ADC_get();
+	Init_ADC_get();
 	
 }
 
 ISR(TIMER3_COMPA_vect){
 	
 	encoder();
-	Inti_CW_right(50);
-	Inti_CW_left(55);
+	Init_CW_right(50);
+	Init_CW_left(55);
 	
 }
 
@@ -171,10 +171,10 @@ int main(void)
 	lcd_init();
 	
 	//タイマレジスタ設定(0:右モーターPWM 1:センサ用 2:左モーターPWM 3:エンコーダ読み取り＋姿勢制御) 
-	Inti_Timer0();
-	Inti_Timer2();
-	Inti_Timer1();
-	Inti_Timer3();
+	Init_Timer0();
+	Init_Timer2();
+	Init_Timer1();
+	Init_Timer3();
 	
 	//AD変換レジスタ設定
 	
@@ -391,7 +391,7 @@ void switch_test(void)
 }
 
 /*
- *	Function Name : Inti_Timer1
+ *	Function Name : Init_Timer1
  *	Tittle        : タイマー1のレジスタ設定
  *	Input		  :	なし
  *	output        :	なし
@@ -399,7 +399,7 @@ void switch_test(void)
  *					ISR(TIMER1_COMPA_vect)
  */
  
-void Inti_Timer1(void)
+void Init_Timer1(void)
 {
 	//TCCR1A(Timer Counter1 Control Register A)
 	//	7,6: OC1Aから出力するPWM波の設定
@@ -485,7 +485,7 @@ void Inti_Timer1(void)
 
 }
 
-void Inti_Timer3(void)
+void Init_Timer3(void)
 {
 	//TCCR3A(Timer Counter3 Control Register A)
 	//	7,6: OC3Aから出力するPWM波の設定

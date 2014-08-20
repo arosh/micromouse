@@ -25,7 +25,7 @@
 
 
 //とりあえずの回転テスト用関数
-void Inti_CW_right(unsigned char pwm)
+void Init_CW_right(unsigned char pwm)
 {
 	TCCR0A = 0b10100011;		//出力設定初期化(AもBもPWM出力)
 	TCCR0A = 0b11000011;		//OC0Bを通常ポートに変更
@@ -34,7 +34,7 @@ void Inti_CW_right(unsigned char pwm)
 }
 
 //とりあえずの回転テスト用関数
-void Inti_CCW_right(unsigned char pwm)
+void Init_CCW_right(unsigned char pwm)
 {
 	TCCR0A = 0b11110011;		//出力設定初期化(AもBもPWM出力)
 	TCCR0A = 0b00110011;		//OC0Aを通常ポートに変更
@@ -44,7 +44,7 @@ void Inti_CCW_right(unsigned char pwm)
 
 
 //とりあえずの回転テスト用関数
-void Inti_CW_left(unsigned char pwm)
+void Init_CW_left(unsigned char pwm)
 {
 	TCCR2A = 0b11110011;		//出力設定初期化(AもBもPWM出力)
 	TCCR2A = 0b00110011;		//OC0Aを通常ポートに変更
@@ -53,7 +53,7 @@ void Inti_CW_left(unsigned char pwm)
 }
 
 //とりあえずの回転テスト用関数
-void Inti_CCW_left(unsigned char pwm)
+void Init_CCW_left(unsigned char pwm)
 {
 	TCCR2A = 0b11110011;		//出力設定初期化(AもBもPWM出力)
 	TCCR2A = 0b11000011;		//OC0Bを通常ポートに変更
@@ -62,7 +62,7 @@ void Inti_CCW_left(unsigned char pwm)
 }
 
 /*
- *	Function Name : Inti_Timer0
+ *	Function Name : Init_Timer0
  *	Tittle        : タイマー0のレジスタ設定
  *	Input		  :	なし
  *	output        :	OCR0A, OCR0B
@@ -70,7 +70,7 @@ void Inti_CCW_left(unsigned char pwm)
  *					
  */
  
-void Inti_Timer0(void)
+void Init_Timer0(void)
 {
 	/*
 	 * TCCR0A(Timer Counter0 Control Register A)
@@ -140,7 +140,7 @@ void Inti_Timer0(void)
 }
 
 /*
- *	Function Name : Inti_Timer2
+ *	Function Name : Init_Timer2
  *	Tittle        : タイマー2のレジスタ設定
  *	Input		  :	なし
  *	output        :	OCR2A, OCR2B
@@ -148,7 +148,7 @@ void Inti_Timer0(void)
  *
  */
  
-void Inti_Timer2(void)
+void Init_Timer2(void)
 {
 	/*
 	 * TCCR2A(Timer Counter2 Control Register A)

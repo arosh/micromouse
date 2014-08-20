@@ -50,7 +50,7 @@ ISR(ADC_vect){
 	
 }
 
-void Inti_ADC_get(void)
+void Init_ADC_get(void)
 {
 	const unsigned char LEDPORT[] = { 0b10000000, 0b00010000, 0b00100000, 0b01000000 };
 	const unsigned char MUXREG[]  = { 0b00100000, 0b00100001, 0b00100010, 0b00100011 };
@@ -69,8 +69,8 @@ void Inti_ADC_get(void)
 
 /*
  *
- *	Function Name :	Init_ADC														
- *	Titlle        : AD変換用レジスタの設定											
+ *	Function Name :	Init_ADC
+ *	Title        : AD変換用レジスタの設定
  *  Input         :	ADC0, ADC1, ADC2, ADC3, ADC4, ADC5								
  *  output        :	なし																
  *	Description   :	通常動作モード

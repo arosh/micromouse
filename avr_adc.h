@@ -13,7 +13,7 @@
 void Init_ADC(void);
 
 //AD•ÏŠ·‚Ìch‚ğØ‚è‘Ö‚¦‚Ä’l‚ğæ“¾‚µ‚Ä‚¢‚­ŠÖ”
-void Inti_ADC_get(void);
+void Init_ADC_get(void);
 
 
 #endif /* AVR_ADC_H_ */

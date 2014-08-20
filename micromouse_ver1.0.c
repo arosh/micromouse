@@ -18,7 +18,7 @@
 void Print_ADC(void);
 
 //timer1のレジスタ設定
-void Inti_Timer1(void);
+void Init_Timer1(void);
 
 //LCD表示のために取得値を桁ごとに分割する関数
 void digit_partition(void);
@@ -136,8 +136,8 @@ int main(void)
 	lcd_init();
 	
 	//タイマレジスタ設定(0:右モーターPWM 1:姿勢制御関係呼び出し 2:左モーターPWM) 
-	Inti_Timer0();
-	Inti_Timer2();
+	Init_Timer0();
+	Init_Timer2();
 	
 	//AD変換レジスタ設定
 	Init_ADC();
@@ -231,7 +231,7 @@ void digit_partition(void)
 
 
 /*
- *	Function Name : Inti_Timer1
+ *	Function Name : Init_Timer1
  *	Tittle        : タイマー1のレジスタ設定
  *	Input		  :	なし
  *	output        :	なし
@@ -239,7 +239,7 @@ void digit_partition(void)
  *					ISR(TIMER1_COMPA_vect)
  */
  
-void Inti_Timer1(void)
+void Init_Timer1(void)
 {
 	//TCCR1A(Timer Counter1 Control Register A)
 	//	7,6: OC1Aから出力するPWM波の設定
