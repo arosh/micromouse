@@ -9,16 +9,16 @@
 #ifndef AVR_MOTER_H_
 #define AVR_MOTER_H_
 
-//ƒ^ƒCƒ}[0‚ÌƒŒƒWƒXƒ^İ’è(8bit‚‘¬PWMƒ‚[ƒh)
+//ã‚¿ã‚¤ãƒãƒ¼0ã®ãƒ¬ã‚¸ã‚¹ã‚¿è¨­å®š(8bité«˜é€ŸPWMãƒ¢ãƒ¼ãƒ‰)
 void Inti_Timer0(void);
 
-//ƒ^ƒCƒ}[2‚ÌƒŒƒWƒXƒ^İ’è(8bit‚‘¬PWMƒ‚[ƒh)
+//ã‚¿ã‚¤ãƒãƒ¼2ã®ãƒ¬ã‚¸ã‚¹ã‚¿è¨­å®š(8bité«˜é€ŸPWMãƒ¢ãƒ¼ãƒ‰)
 void Inti_Timer2(void);
 
-//‚Æ‚è‚ ‚¦‚¸‚Ì‰ñ“]ƒeƒXƒg—pŠÖ”
+//ã¨ã‚Šã‚ãˆãšã®å›è»¢ãƒ†ã‚¹ãƒˆç”¨é–¢æ•°
 void Inti_CW_right(unsigned char pwm);
 
-//‚Æ‚è‚ ‚¦‚¸‚Ì‰ñ“]ƒeƒXƒg—pŠÖ”
+//ã¨ã‚Šã‚ãˆãšã®å›è»¢ãƒ†ã‚¹ãƒˆç”¨é–¢æ•°
 void Inti_CCW_right(unsigned char pwm);
 
 void Inti_CW_left(unsigned char pwm);
