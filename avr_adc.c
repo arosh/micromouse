@@ -40,7 +40,7 @@ ISR(ADC_vect){
 		break;
 	}
 	
-	PORTA = 0b00000000;			//LED������~
+	PORTA = 0b00000000;			//LED発光停止
 	
 	adc_chanel++;
 	
@@ -57,12 +57,12 @@ void Inti_ADC_get(void)
 
 	
 
-	PORTA = LEDPORT[adc_chanel];			//LED(ch0)���s
+	PORTA = LEDPORT[adc_chanel];			//LED(ch0)発行
 	
-	ADMUX = MUXREG[adc_chanel];			//���͂�ch0�ɐ؂�ւ�
-	_delay_us(50);						//�؂�ւ������肷��܂őҋ@
+	ADMUX = MUXREG[adc_chanel];			//入力をch0に切り替え
+	_delay_us(50);						//切り替えが安定するまで待機
 
-	ADCSRA = 0b11001111;				//AD�ϊ��X�^�[�g		#6 = 1 �ɂ���ƕϊ����X�^�[�g����
+	ADCSRA = 0b11001111;				//AD変換スタート		#6 = 1 にすると変換がスタートする
 
 	
 }
@@ -70,10 +70,10 @@ void Inti_ADC_get(void)
 /*
  *
  *	Function Name :	Init_ADC														
- *	Titlle        : AD�ϊ��p���W�X�^�̐ݒ�											
+ *	Titlle        : AD変換用レジスタの設定											
  *  Input         :	ADC0, ADC1, ADC2, ADC3, ADC4, ADC5								
- *  output        :	�Ȃ�																
- *	Description   :	�ʏ퓮�샂�[�h
+ *  output        :	なし																
+ *	Description   :	通常動作モード
  *
  */
 
@@ -82,23 +82,23 @@ void Init_ADC(void)
 	/*
 	 * ADMUX(ADC Multiplexer Selct Register)
 	 *	
-	 *	7: ���U�[�u�r�b�g
+	 *	7: リザーブビット
 	 *		#7 = 0
 	 *
-	 *	6: ��d���I��
-	 *		��d���Ƃ���Vcc(5V)���g�p����
+	 *	6: 基準電圧選択
+	 *		基準電圧としてVcc(5V)を使用する
 	 *		#6 = 0
 	 *
-	 *	5: �ϊ����ʂ��E�񂹂ɂ��邩���񂹂ɂ��邩��ݒ肷��
-	 *		���񂹂ɂ���
+	 *	5: 変換結果を右寄せにするか左寄せにするかを設定する
+	 *		左寄せにする
 	 *		#5 = 1
 	 *
-	 *		4: ���U�[�u�r�b�g
+	 *		4: リザーブビット
 	 *		#4 = 0
 	 *
-	 *	3,2,1,0: AD�`�����l���I��
-	 *		���̃r�b�g��AD�ϊ����ɂ��Ă��ϊ������܂ł͎��s����Ȃ�
-	 *		�Ƃ肠����ADC0�ɐݒ�
+	 *	3,2,1,0: ADチャンネル選択
+	 *		このビットをAD変換中にしても変換完了までは実行されない
+	 *		とりあえずADC0に設定
 	 *		#3 = 0, #2 = 0, #1 = 0, #0 = 0
 	 */
 	ADMUX = 0b01100000;
@@ -106,48 +106,48 @@ void Init_ADC(void)
 	/*
 	 * ADCSRA(ADC Control and Status Register A)
 	 *	
-	 *	7: AD�ϊ�����
-	 *		AD�ϊ���������
+	 *	7: AD変換許可
+	 *		AD変換を許可する
 	 *		#7 = 1
 	 *
-	 *	6: ADSC(ADC Start Conversion)	AD�ϊ��J�n
-	 *		�Ƃ肠�����J�n�͂܂����Ȃ�
+	 *	6: ADSC(ADC Start Conversion)	AD変換開始
+	 *		とりあえず開始はまだしない
 	 *		#6 = 0
 	 *
-	 *	5: AD�ϊ������N������
+	 *	5: AD変換自動起動許可
 	 *		#5 = 0
 	 *
-	 *	4: AD�ϊ��������荞�ݗv���t���O
-	 *		AD�ϊ������������ʂ̃��W�X�^���X�V�����Ƃ��̃t���O��'1'�ɂȂ�
-	 *		�Ƃ肠���������l����͂��Ă���
+	 *	4: AD変換完了割り込み要求フラグ
+	 *		AD変換が完了し結果のレジスタが更新されるとこのフラグが'1'になる
+	 *		とりあえず初期値を入力しておく
 	 *		#4 = 1
 	 *
-	 *	3: AD�ϊ��������荞�݋���
-	 *		���荞�݂��g�p����ꍇ��'1'�ɂ��Ă���
+	 *	3: AD変換完了割り込み許可
+	 *		割り込みを使用する場合は'1'にしておく
 	 *		#3 = 1
 	 *
-	 *	2,1,0: AD�ϊ��N���b�N�I��
-	 *		ADC�͕ϊ��X�s�[�h�𑁂����������10�r�b�g����������
-	 *		�@�\���Ȃ��̂�50kHz�`200KHz�̃N���b�N���g���ɐݒ肷��
-	 *		ATmega88P�̓���N���b�N��20MHz�Ȃ̂ŁA
-	 *		20M/128 ==> 156kHz�Ƃ���@������/��128
+	 *	2,1,0: AD変換クロック選択
+	 *		ADCは変換スピードを早くしすぎると10ビット分しっかり
+	 *		機能しないので50kHz〜200KHzのクロック周波数に設定する
+	 *		ATmega88Pの動作クロックは20MHzなので、
+	 *		20M/128 ==> 156kHzとする　分周は/φ128
 	 * 		#2 = 1, #1 = 1, #0 = 1
 	 */
 	ADCSRA = 0b10000111;
 	
 	/*
 	 * ADCSRB(ADC Control and Status Register B)
-	 *	7:	���U�[�u�r�b�g
+	 *	7:	リザーブビット
 	 *		#7 = 0
 	 *
-	 *	6:	�悭�킩���
+	 *	6:	よくわからん
 	 *		#6 = 0
 	 *
-	 *	5,4,3:	���U�[�u�r�b�g
+	 *	5,4,3:	リザーブビット
 	 *		#5 = 0, #4 = 0, #3 = 0
 	 *
-	 *	2,1,0:	AD�ϊ������N���v���I��
-	 *		�A���ϊ�����
+	 *	2,1,0:	AD変換自動起動要因選択
+	 *		連続変換動作
 	 *		#2 = 0, #1 = 0, #0 = 0
 	 */
 	ADCSRB = 0b00000000;
@@ -155,7 +155,7 @@ void Init_ADC(void)
 	/*
 	 * DIDR0(Digital Input Disable Register 0)
 	 *
-	 * 7,6,5,4,3,2,1,0: �f�W�^�����͋֎~
+	 * 7,6,5,4,3,2,1,0: デジタル入力禁止
 	 *	
 	 */
 	DIDR0 = 0b00001111;

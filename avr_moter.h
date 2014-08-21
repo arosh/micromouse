@@ -9,22 +9,22 @@
 #ifndef AVR_MOTER_H_
 #define AVR_MOTER_H_
 
-//���������ł���ΑO�i�����ɉ�],���ł���Ό�i�����ɉ�]
+//引数が正であれば前進方向に回転,負であれば後進方向に回転
 void moter_right(int x);
 
-//���������ł���ΑO�i�����ɉ�],���ł���Ό�i�����ɉ�]
+//引数が正であれば前進方向に回転,負であれば後進方向に回転
 void moter_left(int x);
 	
-//�^�C�}�[0�̃��W�X�^�ݒ�(8bit����PWM���[�h)
+//タイマー0のレジスタ設定(8bit高速PWMモード)
 void Inti_Timer0(void);
 
-//�^�C�}�[2�̃��W�X�^�ݒ�(8bit����PWM���[�h)
+//タイマー2のレジスタ設定(8bit高速PWMモード)
 void Inti_Timer2(void);
 
-//�Ƃ肠�����̉�]�e�X�g�p�֐�
+//とりあえずの回転テスト用関数
 void Inti_CW_right(unsigned char pwm);
 
-//�Ƃ肠�����̉�]�e�X�g�p�֐�
+//とりあえずの回転テスト用関数
 void Inti_CCW_right(unsigned char pwm);
 
 void Inti_CW_left(unsigned char pwm);

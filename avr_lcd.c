@@ -8,15 +8,15 @@
 /*
  * specification
  *
- * �ڂ����͌��Hp����̗납��̓d�q�H���55-58����Q�Ƃ��ꂽ���B
- * http://www.nicovideo.jp/watch/sm15413302 (�납��̓d�q�H���55�񃊃��N)
- * LCD�̃f�[�^�V�[�g�������������ɗ��B
+ * 詳しくは剣菱pさんの零からの電子工作第55-58回を参照されたし。
+ * http://www.nicovideo.jp/watch/sm15413302 (零からの電子工作第55回リンク)
+ * LCDのデータシートもそこそこ役に立つ。
  *
- * �̗p����LCD
- * http://akizukidenshi.com/catalog/g/gP-02985/ (�H���d�q�����N)
+ * 採用したLCD
+ * http://akizukidenshi.com/catalog/g/gP-02985/ (秋月電子リンク)
  *
  *
- * PORT�̌q����
+ * PORTの繋ぎ方
  * 
  * 0: RS
  * 1: E
@@ -27,8 +27,8 @@
  * 6: DB6
  * 7: DB7
  *
- * PORT��ߖ񂷂邽�߂�8bit�]�����[�h�ł͂Ȃ�4bit�]�����[�h���g�p���Ă���B
- * �g��Ȃ�DB0-3�͂ǂ��Ƃ��ڑ����Ȃ��悤�ɂ��Ă�������(�������Ă���)
+ * PORTを節約するために8bit転送モードではなく4bit転送モードを使用している。
+ * 使わないDB0-3はどことも接続しないようにしておくこと(浮かせておく)
  *
  */
 
@@ -39,13 +39,13 @@
 #include "avr_lcd.h"
 
 
-//������S��������
+//文字を全消去する
 void lcd_clear(void)
 {
-	lcd_cmd(0x01);		//�N���A�R�}���h
+	lcd_cmd(0x01);		//クリアコマンド
 }
 
-//������𑗐M����
+//文字列を送信する
 void lcd_str(char *str)
 {
 	while(*str != '\0'){
@@ -54,12 +54,12 @@ void lcd_str(char *str)
 	}
 }
 
-/*�����̈ʒu�����߂�(���W��0�I���W��)
+/*文字の位置を決める(座標は0オリジン)
  *
- *	LCD��16*2
- *	(��,�s)�ŕ����̏ꏊ�����肵�Ă���
+ *	LCDは16*2
+ *	(列,行)で文字の場所を決定している
  *
- *	������̍Ō�͈ʒu��(0,0)�ɖ߂��Ă�����(���[�v���邽�߂�)	
+ *	文字列の最後は位置を(0,0)に戻してあげる(ループするために)	
  *
  */
 
@@ -73,7 +73,7 @@ void lcd_pos(int line, int col)
 	}
 }
 
-//�����ݒ�
+//初期設定
 void lcd_init(void)
 {
 	_delay_ms(15);
@@ -94,42 +94,42 @@ void lcd_init(void)
 	
 }
 
-/* �R�}���h�Ȃ̂��f�[�^�����肵LCD�ɑ��M
+/* コマンドなのかデータを決定しLCDに送信
  *
- *	1�ڂ̈����Œl���A
- *	2�ڂ̈����ł��̒l���f�[�^���R�}���h����I������B(0:�R�}���h 1:�f�[�^)
+ *	1個目の引数で値を、
+ *	2個目の引数でその値がデータかコマンドかを選択する。(0:コマンド 1:データ)
  *
  */
 
 void lcd_out(int code, int rs)
 {
-	PORTC = (code & 0xF0) | (PORTC & 0x0F);		//PD2,3���g���ꍇ�ɒl���ς��Ȃ��悤�ɂ��邽�߂̏��u
+	PORTC = (code & 0xF0) | (PORTC & 0x0F);		//PD2,3を使う場合に値が変わらないようにするための処置
 	
 	if(rs == 0){
-		PORTC = code & 0b11111110;				//�R�}���h�𑗐M����
+		PORTC = code & 0b11111110;				//コマンドを送信する
 	}
 	else{
-		PORTC = code | 0b00000001;				//�f�[�^�𑗐M����
+		PORTC = code | 0b00000001;				//データを送信する
 	}
 	
 	_delay_ms(1);
-	PORTC = PORTC | 0b00000010;					//E�̃t���O�𗧂Ă�
+	PORTC = PORTC | 0b00000010;					//Eのフラグを立てる
 	_delay_ms(1);
-	PORTC = PORTC & 0b11111101;					//E�̃t���O��߂�
+	PORTC = PORTC & 0b11111101;					//Eのフラグを戻す
 	
 }
 
 
-//�R�}���h�𑗐M����
-void lcd_cmd(int cmd)							//4bit�����M
+//コマンドを送信する
+void lcd_cmd(int cmd)							//4bitずつ送信
 {
 	lcd_out(cmd, 0);
 	lcd_out(cmd << 4, 0);
 	_delay_ms(2);
 }
 
-//�f�[�^�𑗐M����
-void lcd_data(int asci)							//4bit�����M
+//データを送信する
+void lcd_data(int asci)							//4bitずつ送信
 {
 	lcd_out(asci, 1);
 	lcd_out(asci << 4, 1);

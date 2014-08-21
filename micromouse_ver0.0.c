@@ -15,41 +15,41 @@
 #include "avr_adc.h"
 #include <math.h>
 
-//�e�X�C�b�`�̃e�X�g
+//各スイッチのテスト
 void switch_test(void);
 
-//�e�Z���T�̒l��LCD�ɕ\��
+//各センサの値をLCDに表示
 void Print_ADC(void);
 
-//�e���[�^���[�G���R�[�_�̃J�E���g����LCD�ɕ\��
+//各ロータリーエンコーダのカウント数をLCDに表示
 void print_RotaryEncorder(void);
 
-//�e�Z���T�̒l�ƃ��[�^���[�G���R�[�_�̃J�E���g���𓯎���LCD�ɕ\��
+//各センサの値とロータリーエンコーダのカウント数を同時にLCDに表示
 void print_all_sensor(void);
 
-//timer1�̃��W�X�^�ݒ�
+//timer1のレジスタ設定
 void Inti_Timer1(void);
 
-//timer3�̃��W�X�^�ݒ�
+//timer3のレジスタ設定
 void Inti_Timer3(void);
 
-//LCD�\���̂��߂ɃZ���T�̎擾�l�������Ƃɕ�������֐�
+//LCD表示のためにセンサの取得値を桁ごとに分割する関数
 void S_digit_partition(void);
 
-//LCD�\���̂��߂Ƀ��[�^���[�G���R�[�_�̎擾�l�������Ƃɕ�������֐�
+//LCD表示のためにロータリーエンコーダの取得値を桁ごとに分割する関数
 void E_digit_partition(void);
 
-//�G���R�[�_�ݒ�
+//エンコーダ設定
 void encoder(void);
 
-//Beep�֐�
+//Beep関数
 void beep(void);
 
 void beep_start(void);
 
 void beep_end(void);
 
-//AD�ϊ��l�������ɕϊ�
+//AD変換値を距離に変換
 float liner_change(int x);
 
 float liner_change(int x)
@@ -58,7 +58,7 @@ float liner_change(int x)
 }
 
 
-//�e�Z���T�l���i�[����ϐ�
+//各センサ値を格納する変数
 volatile unsigned char Left_Sensor_val;
 volatile unsigned char LeftFront_Sensor_val;
 volatile unsigned char RightFront_Sensor_val;
@@ -73,7 +73,7 @@ struct{
 }S_Left = {0, 0, 0}, S_LeftFront = {0, 0, 0}, S_RightFront ={0, 0, 0}, S_Right ={0, 0, 0};
 
 
-//���[�^���[�G���R�[�_�̒l���i�[����ϐ�
+//ロータリーエンコーダの値を格納する変数
 volatile unsigned int Left_RotaryEncorder_val  = 32768;
 volatile unsigned int Right_RotaryEncorder_val = 32768;
 
@@ -102,13 +102,13 @@ ISR(TIMER3_COMPA_vect){
 	char liner_front_val = (liner_change(RightFront_Sensor_val) +liner_change(LeftFront_Sensor_val)) * 0.5;
 	static char turn_flag = 0;
 	
-	//�^�[���t���O�������Ă��Ȃ��Ƃ�
+	//ターンフラグが立っていないとき
 	if(turn_flag == 0){
 		
-		//�O�ǂ��Ȃ��Ƃ�
+		//前壁がないとき
 		if(liner_front_val > 59){
 			
-			//���i
+			//直進
 			const float KP_RIGHT = 0.15;
 			const float KP_LEFT  = 0.15;
 
@@ -142,7 +142,7 @@ ISR(TIMER3_COMPA_vect){
 				Inti_CW_left((int)control_left + 47);
 			}
 		}
-		//�O�ǂ�����Ƃ�
+		//前壁があるとき
 		else{
 			
 			Inti_CW_left(0);
@@ -153,10 +153,10 @@ ISR(TIMER3_COMPA_vect){
 		}
 	}
 	
-	//�^�[���t���O�������Ă���Ƃ�
+	//ターンフラグが立っているとき
 	else{
 		
-		//�^�[��������
+		//ターンをする
 		reference_right_encoder = Right_RotaryEncorder_val - 190;
 		reference_left_encoder  = Left_RotaryEncorder_val + 190;
 		
@@ -175,13 +175,13 @@ ISR(TIMER3_COMPA_vect){
 		//
 		if( reference_left_encoder >  Left_RotaryEncorder_val){
 			
-			//�O�ǂ�����Ƃ�
+			//前壁があるとき
 			if(liner_front_val < 59){
 				
 				turn_flag = 1;
 				
 			}
-			//�O�ǂ��Ȃ��Ƃ�
+			//前壁がないとき
 			else{
 				
 				turn_flag = 0;
@@ -193,14 +193,14 @@ ISR(TIMER3_COMPA_vect){
 
 int main(void)
 {		
-	cli();		//���荞�݋֎~
+	cli();		//割り込み禁止
 	
 	/*
-	 * �ȒP��PORT�̐���
+	 * 簡単なPORTの説明
 	 *
-	 * DDR_  �������W�X�^(0:���� 1:�o��)
-	 * PORT_ �o�̓��W�X�^(���͂̏ꍇ 0:�v���A�b�v�֎~ 1:�v���A�b�v�L��)
-	 *					 (�o�͂̏ꍇ 0:Low 1:High)
+	 * DDR_  方向レジスタ(0:入力 1:出力)
+	 * PORT_ 出力レジスタ(入力の場合 0:プルアップ禁止 1:プルアップ有効)
+	 *					 (出力の場合 0:Low 1:High)
 	 *
 	 */
 	
@@ -208,31 +208,31 @@ int main(void)
 	/*
 	 *	PORTA
 	 *
-	 * 0: �E�O�Z���T(�E)ADC����
-	 * 1: �E�Z���TADC����
-	 * 2: ���Z���TADC����
-	 * 3: �E�O�Z���T(��)ADC����
+	 * 0: 右前センサ(右)ADC入力
+	 * 1: 右センサADC入力
+	 * 2: 左センサADC入力
+	 * 3: 右前センサ(左)ADC入力
 	 *
-	 * 4: ���O�Z���T��LED����
-	 * 5: ���Z���T��LED���� 
-	 * 6: �E�Z���T��LED����
-	 * 7: �E�O�Z���T��LED����
+	 * 4: 左前センサのLED制御
+	 * 5: 左センサのLED制御 
+	 * 6: 右センサのLED制御
+	 * 7: 右前センサのLED制御
 	 *
 	 */
 	DDRA  = 0b11110000;
-	PORTA = 0b00000000;		//ADC�Ŏg�p����ۂ̓v���A�b�v�֎~(�l���ω����邽��)
+	PORTA = 0b00000000;		//ADCで使用する際はプルアップ禁止(値が変化するため)
 	
 	/*
 	 *	PORTB
 	 *
-	 * 0: Beep�o��
-	 * 1: ��X�C�b�`
-	 * 2: �X�C�b�`(INT2 �O��������)
-	 * 3: �E���[�^�[�pPWM�o��(PWM�o�͂ɂ���Ƃ��͕K��DDR��1�ɂ��邱��)
-	 * 4: �E���[�^�[�pPWM�o��(PWM�o�͂ɂ���Ƃ��͕K��DDR��1�ɂ��邱��)
-	 * 5: �������ݗpISP�Ɏg�p(MOSI)
-	 * 6: �������ݗpISP�Ɏg�p(MISO)
-	 * 7: �������ݗpISP�Ɏg�p(SCK)
+	 * 0: Beep出力
+	 * 1: 橙スイッチ
+	 * 2: 青スイッチ(INT2 外部割込み)
+	 * 3: 右モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
+	 * 4: 右モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
+	 * 5: 書き込み用ISPに使用(MOSI)
+	 * 6: 書き込み用ISPに使用(MISO)
+	 * 7: 書き込み用ISPに使用(SCK)
 	 *
 	 */
 	DDRB  = 0b00011001;						
@@ -241,14 +241,14 @@ int main(void)
 	/*
 	 *	PORTC
 	 *
-	 * 0: LCD�\���p(RS�̐؂�ւ� 0:�R�}���h 1:�f�[�^)
-	 * 1: LCD�\���p(E�̃t���O�ݒ�@����bit�����������LCD�Ƀf�[�^�����M�����)
+	 * 0: LCD表示用(RSの切り替え 0:コマンド 1:データ)
+	 * 1: LCD表示用(Eのフラグ設定　このbitが立ちがるとLCDにデータが送信される)
 	 * 2:
 	 * 3:
-	 * 4: LCD�\���p(�f�[�^�o�X)
-	 * 5: LCD�\���p(�f�[�^�o�X)
-	 * 6: LCD�\���p(�f�[�^�o�X)
-	 * 7: LCD�\���p(�f�[�^�o�X)
+	 * 4: LCD表示用(データバス)
+	 * 5: LCD表示用(データバス)
+	 * 6: LCD表示用(データバス)
+	 * 7: LCD表示用(データバス)
 	 *
 	 */
 	DDRC  = 0b11110011;					
@@ -257,34 +257,34 @@ int main(void)
 	/*
 	 *	PORTD
 	 *
-	 * 0: �����[�^���[�G���R�[�_�̃p���X�gA�����
-	 * 1: �����[�^���[�G���R�[�_�̃p���X�gB�����
-	 * 2: �E���[�^���[�G���R�[�_�̃p���X�gA�����
-	 * 3: �E���[�^���[�G���R�[�_�̃p���X�gB�����
+	 * 0: 左ロータリーエンコーダのパルス波Aを入力
+	 * 1: 左ロータリーエンコーダのパルス波Bを入力
+	 * 2: 右ロータリーエンコーダのパルス波Aを入力
+	 * 3: 右ロータリーエンコーダのパルス波Bを入力
 	 * 4: 
 	 * 5: 
-	 * 6: �����[�^�[�pPWM�o��(PWM�o�͂ɂ���Ƃ��͕K��DDR��1�ɂ��邱��)
-	 * 7: �����[�^�[�pPWM�o��(PWM�o�͂ɂ���Ƃ��͕K��DDR��1�ɂ��邱��)
+	 * 6: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
+	 * 7: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
 	 *
 	 */
 	DDRD  = 0b11000000;
-	PORTD = 0b00001111;			//RE12D�̓v���A�b�v�s�v�炵�����O�̂��߃v���A�b�v�͗L����
+	PORTD = 0b00001111;			//RE12Dはプルアップ不要らしいが念のためプルアップは有効に
 	
-	//LCD������
+	//LCD初期化
 	lcd_init();
 	
-	//�^�C�}���W�X�^�ݒ�(0:�E���[�^�[PWM 1:�Z���T�p 2:�����[�^�[PWM 3:�G���R�[�_�ǂݎ��{�p������) 
+	//タイマレジスタ設定(0:右モーターPWM 1:センサ用 2:左モーターPWM 3:エンコーダ読み取り＋姿勢制御) 
 	Inti_Timer0();
 	Inti_Timer2();
 	Inti_Timer1();
 	Inti_Timer3();
 	
-	//AD�ϊ����W�X�^�ݒ�
+	//AD変換レジスタ設定
 	
-	loop_until_bit_is_clear(PINB,PINB2);		//�X�^�[�g�X�C�b�`(�F)���������܂őҋ@
-	beep();										//�u�U�[��炷
+	loop_until_bit_is_clear(PINB,PINB2);		//スタートスイッチ(青色)が押されるまで待機
+	beep();										//ブザーを鳴らす
 	
-	sei();		//���荞�݋���
+	sei();		//割り込み許可
 	
 	while(1){
 		
@@ -339,7 +339,7 @@ void encoder(void)
 
 }
 
-//�e�Z���T�̒l�ƃ��[�^���[�G���R�[�_�̃J�E���g���𓯎���LCD�ɕ\��
+//各センサの値とロータリーエンコーダのカウント数を同時にLCDに表示
 void print_all_sensor(void)
 {
 	S_digit_partition();
@@ -383,7 +383,7 @@ void print_all_sensor(void)
 	
 }
 
-//�e�Z���T�̒l��LCD�ɕ\��
+//各センサの値をLCDに表示
 void Print_ADC(void)
 {
 	S_digit_partition();
@@ -414,25 +414,25 @@ void Print_ADC(void)
 
 }
 
-//�Z���T�l�̌����킯��(LCD�̕�����\���̂���) 
+//センサ値の桁をわける(LCDの文字列表示のため) 
 void S_digit_partition(void)
 {	
-	//�O(������)
+	//前(左側の)
 	S_Left.dig1			=  Left_Sensor_val % 10;
 	S_Left.dig10		= (Left_Sensor_val / 10) % 10;
 	S_Left.dig100		= (Left_Sensor_val / 100) % 10; 
 
-	//���̃Z���T
+	//左のセンサ
 	S_LeftFront.dig1    =  LeftFront_Sensor_val % 10;
 	S_LeftFront.dig10   = (LeftFront_Sensor_val / 10) % 10;
 	S_LeftFront.dig100	= (LeftFront_Sensor_val/ 100) % 10;
 
-	//�E�̃Z���T
+	//右のセンサ
 	S_RightFront.dig1   =  RightFront_Sensor_val % 10;
 	S_RightFront.dig10  = (RightFront_Sensor_val / 10) % 10;
 	S_RightFront.dig100 = (RightFront_Sensor_val / 100) % 10;
 
-	//�O(�E��)
+	//前(右側)
 	S_Right.dig1		=  Right_Sensor_val % 10;
 	S_Right.dig10		= (Right_Sensor_val / 10) % 10;
 	S_Right.dig100		= (Right_Sensor_val / 100) % 10;
@@ -465,14 +465,14 @@ void print_RotaryEncorder(void)
 
 void E_digit_partition(void)
 {
-	//��
+	//左
 	E_Left.dig1			=  Left_RotaryEncorder_val % 10;
 	E_Left.dig10		= (Left_RotaryEncorder_val / 10) % 10;
 	E_Left.dig100		= (Left_RotaryEncorder_val / 100) % 10;
 	E_Left.dig1000		= (Left_RotaryEncorder_val / 1000) % 10;
 	E_Left.dig10000		= (Left_RotaryEncorder_val / 10000) % 10;
 	
-	//�E
+	//右
 	E_Right.dig1		=  Right_RotaryEncorder_val % 10;
 	E_Right.dig10		= (Right_RotaryEncorder_val / 10) % 10;
 	E_Right.dig100		= (Right_RotaryEncorder_val / 100) % 10;
@@ -505,94 +505,94 @@ void switch_test(void)
 
 /*
  *	Function Name : Inti_Timer1
- *	Tittle        : �^�C�}�[1�̃��W�X�^�ݒ�
- *	Input		  :	�Ȃ�
- *	output        :	�Ȃ�
- *	Descripution  : CTC���g���Ď�y�ɃJ�E���g����
+ *	Tittle        : タイマー1のレジスタ設定
+ *	Input		  :	なし
+ *	output        :	なし
+ *	Descripution  : CTCを使って手軽にカウントする
  *					ISR(TIMER1_COMPA_vect)
  */
  
 void Inti_Timer1(void)
 {
 	//TCCR1A(Timer Counter1 Control Register A)
-	//	7,6: OC1A����o�͂���PWM�g�̐ݒ�
-	//       �����o�͂��Ȃ��̂�
+	//	7,6: OC1Aから出力するPWM波の設定
+	//       何も出力しないので
 	//		 #7 = 0, #6 = 0
 	//
-	//	5,4: OC1B����o�͂���PWM�g�̐ݒ�
-	//       �����o�͂��Ȃ��̂�
+	//	5,4: OC1Bから出力するPWM波の設定
+	//       何も出力しないので
 	//       #5 = 0, #4 = 0
 	//
-	//	3,2: ���U�[�u�r�b�g
+	//	3,2: リザーブビット
 	//       #3 = 0, #2 = 0
 	//
-	//	1,0: PWM�g�`�̎�ނ̐ݒ�(���L��TCCR1B�ɂ��ݒ肪�ׂ��Ă���̂Œ���)
-	//		 CTC���[�h
+	//	1,0: PWM波形の種類の設定(下記のTCCR1Bにも設定が跨っているので注意)
+	//		 CTCモード
 	//       #1 = 0, #0 = 0
 	TCCR1A = 0b00000010;
 	
 	//TCCR1B(Timer Counter1 Control register B)
-	//	7,6: OC1A,OC1B �����ύX�ݒ�
-	//		 ����͔�PWM���[�h���g�p����ۂɐݒ肷��@����͎g�p���Ȃ�
+	//	7,6: OC1A,OC1B 強制変更設定
+	//		 これは非PWMモードを使用する際に設定する　今回は使用しない
 	//		 #7 = 0, #6 = 0
 	//
-	//	5,4: ���U�[�u�r�b�g
+	//	5,4: リザーブビット
 	//		 #5 = 0, #4 = 0
 	//
-	//	3  : PWM�g�`�̎�ނ̐ݒ�(��L�ɏq�ׂ��ݒ�̎c��)
+	//	3  : PWM波形の種類の設定(上記に述べた設定の残り)
 	//       #3 = 0
 	//
-	//	2,1,0: ������ݒ�
-	//         ATmega1284P-AU�̓���N���b�N��20MHz(�q���[�Y�r�b�g�ŕ����ݒ��������)
-	//         ������1/1024
-	//         20MHz/1024 ==> ��20kHz
+	//	2,1,0: 分周器設定
+	//         ATmega1284P-AUの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
+	//         分周は1/1024
+	//         20MHz/1024 ==> 約20kHz
 	//         #2 = 1, #1 = 0, #0 = 1
 	TCCR1B = 0b00000101;
 	
 	//TCNT1(Timer Counter1)
-	//		�^�C�}�J�E���^(16bit)�ɒ��ڃA�N�Z�X�ł���
-	//		�����l�������
+	//		タイマカウンタ(16bit)に直接アクセスできる
+	//		初期値をいれる
 	TCNT1 = 0;
 	
 	
 	//OCR1A(Timer Counter1 Output Compare A Register)
-	//      ���R���y�A�}�b�`A�������邩��ݒ肷��(16bit)
+	//      いつコンペアマッチAをさせるかを設定する(16bit)
 	//
-	//		�f�[�^�V�[�g��AD�ϊ��̂Ƃ��������ƁA
-	//		�ϊ����Ԃ�13-260us(50k-1MHz)�Ə����Ă���B
-	//		����AD�ϊ��̓���N���b�N��156kHz�Ȃ̂Ő��`�ɐ��ڂ���Ɖ��肷��Ɩ�240us�ɂȂ�B
+	//		データシートのAD変換のところを見ると、
+	//		変換時間は13-260us(50k-1MHz)と書いてある。
+	//		今回AD変換の動作クロックは156kHzなので線形に推移すると仮定すると約240usになる。
 	//
-	//		AD�ϊ����Ԃ͖�240us �܂��}���`�v���N�T�̐؂�ւ����Ԃ�100us����Ă���B
-	//		�����4��J�肩���肵�Ă���̂ŁA
-	//		(240+100)*4 = 1360us �����ł�1360us�Ƃ���B
+	//		AD変換時間は約240us またマルチプレクサの切り替え時間に100usいれている。
+	//		それを4回繰りかえりしているので、
+	//		(240+100)*4 = 1360us ここでは1360usとする。
 	//
-	//		AD�ϊ�����������O�Ɋ��荞��ł��Ӗ����Ȃ��̂ŁA���荞�݊Ԋu��us�ȏ�ɂ���K�v������B
+	//		AD変換が完了する前に割り込んでも意味がないので、割り込み間隔はus以上にする必要がある。
 	//
-	//      1�N���b�N��20kHz(50us)�ɐݒ肵�Ă���̂ŁA
-	//		3000us/50us = 60�ƂȂ�B
+	//      1クロックは20kHz(50us)に設定しているので、
+	//		3000us/50us = 60となる。
 	//
 	OCR1A = 1500;
 	
 	//OCR1B(Timer Counter1 Output Compare B Register)
-	//		���R���y�A�}�b�`B�������邩��ݒ肷��(16bit)
-	//		����͎g�p���Ȃ��B
+	//		いつコンペアマッチBをさせるかを設定する(16bit)
+	//		今回は使用しない。
 	OCR1B = 0;
 
 	//TIMSK1(Timer Counter 1 Interrupt Mask Register)
-	//		�^�C�}���荞�݂������邽�߂̃��W�X�^
-	//	7,6,5,4,3: ���U�[�u�r�b�g
+	//		タイマ割り込みを許可するためのレジスタ
+	//	7,6,5,4,3: リザーブビット
 	//		#7-3 = 0
 	//
-	//  2 : B��r�̋���
-	//		�g�p���Ȃ��̂�
+	//  2 : B比較の許可
+	//		使用しないので
 	//		#2 = 0
 	//
-	//  1 : A��r�̋���
-	//		�g�p����̂�
+	//  1 : A比較の許可
+	//		使用するので
 	//		#1 = 1
 	//
-	//	0 : �R�ꊄ�荞�݋���
-	//		�g�p���Ȃ��̂�
+	//	0 : 漏れ割り込み許可
+	//		使用しないので
 	//		#0 = 0
 	TIMSK1 = 0b00000010;
 
@@ -601,74 +601,74 @@ void Inti_Timer1(void)
 void Inti_Timer3(void)
 {
 	//TCCR3A(Timer Counter3 Control Register A)
-	//	7,6: OC3A����o�͂���PWM�g�̐ݒ�
-	//       �����o�͂��Ȃ��̂�
+	//	7,6: OC3Aから出力するPWM波の設定
+	//       何も出力しないので
 	//			#7 = 0, #6 = 0
 	//
-	//	5,4: OC3B����o�͂���PWM�g�̐ݒ�
-	//       �����o�͂��Ȃ��̂�
+	//	5,4: OC3Bから出力するPWM波の設定
+	//       何も出力しないので
 	//			#5 = 0, #4 = 0
 	//
-	//	3,2: ���U�[�u�r�b�g
+	//	3,2: リザーブビット
 	//			#3 = 0, #2 = 0
 	//
-	//	1,0: PWM�g�`�̎�ނ̐ݒ�(���L��TCCR3B�ɂ��ݒ肪�ׂ��Ă���̂Œ���)
-	//			CTC���[�h
+	//	1,0: PWM波形の種類の設定(下記のTCCR3Bにも設定が跨っているので注意)
+	//			CTCモード
 	//			#1 = 1, #0 = 0
 	TCCR3A = 0b00000010;
 	
 	//TCCR3B(Timer Counter3 Control register B)
-	//	7,6: OC1A,OC1B �����ύX�ݒ�
-	//		 ����͔�PWM���[�h���g�p����ۂɐݒ肷��@����͎g�p���Ȃ�
+	//	7,6: OC1A,OC1B 強制変更設定
+	//		 これは非PWMモードを使用する際に設定する　今回は使用しない
 	//			#7 = 0, #6 = 0
 	//
-	//	5,4: ���U�[�u�r�b�g
+	//	5,4: リザーブビット
 	//			#5 = 0, #4 = 0
 	//
-	//	3  : PWM�g�`�̎�ނ̐ݒ�(��L�ɏq�ׂ��ݒ�̎c��)
+	//	3  : PWM波形の種類の設定(上記に述べた設定の残り)
 	//			#3 = 0
 	//
-	//	2,1,0: ������ݒ�
-	//			ATmega1284P-AU�̓���N���b�N��20MHz(�q���[�Y�r�b�g�ŕ����ݒ��������)
-	//			���[�^���[�G���R�[�_�̉�]��ǂނ̂ŁA�J�E���g���[�g���T���v�����O���g�������A
-	//			�傫���Ȃ��Ă͂����Ȃ��̂ō���̃T���v�����O���g����100kHz(10us)�Ƃ���
-	//			20MHz/64 ==> ��312.5kHz(3.2us)
+	//	2,1,0: 分周器設定
+	//			ATmega1284P-AUの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
+	//			ロータリーエンコーダの回転を読むので、カウントレートがサンプリング周波数よりも、
+	//			大きくなってはいけないので今回のサンプリング周波数は100kHz(10us)とする
+	//			20MHz/64 ==> 約312.5kHz(3.2us)
 	//			#2 = 0, #1 = 1, #0 = 1
 	TCCR3B = 0b00000010;
 	
 	//TCNT3(Timer Counter3)
-	//			�^�C�}�J�E���^(16bit)�ɒ��ڃA�N�Z�X�ł���
-	//			�����l�������
+	//			タイマカウンタ(16bit)に直接アクセスできる
+	//			初期値をいれる
 	TCNT3 = 0;
 	
 	
 	//OCR3A(Timer Counter3 Output Compare A Register)
-	//			���R���y�A�}�b�`A�������邩��ݒ肷��(16bit)
-	//			�T���v�����O���g����100kHz(10us)�ɂ������̂�
-	//			10/3.2 = 3.125 �����ł͖�4�Ƃ���
+	//			いつコンペアマッチAをさせるかを設定する(16bit)
+	//			サンプリング周波数を100kHz(10us)にしたいので
+	//			10/3.2 = 3.125 ここでは約4とする
 	//			
 	OCR3A = 10;
 	
 	//OCR3B(Timer Counter3 Output Compare B Register)
-	//			���R���y�A�}�b�`B�������邩��ݒ肷��(16bit)
-	//			����͎g�p���Ȃ��B
+	//			いつコンペアマッチBをさせるかを設定する(16bit)
+	//			今回は使用しない。
 	OCR3B = 0;
 
 	//TIMSK3(Timer Counter 3 Interrupt Mask Register)
-	//		�^�C�}���荞�݂������邽�߂̃��W�X�^
-	//	7,6,5,4,3: ���U�[�u�r�b�g
+	//		タイマ割り込みを許可するためのレジスタ
+	//	7,6,5,4,3: リザーブビット
 	//		#7-3 = 0
 	//
-	//  2 : B��r�̋���
-	//		�g�p���Ȃ��̂�
+	//  2 : B比較の許可
+	//		使用しないので
 	//		#2 = 0
 	//
-	//  1 : A��r�̋���
-	//		�g�p����̂�
+	//  1 : A比較の許可
+	//		使用するので
 	//		#1 = 1
 	//
-	//	0 : �R�ꊄ�荞�݋���
-	//		�g�p���Ȃ��̂�
+	//	0 : 漏れ割り込み許可
+	//		使用しないので
 	//		#0 = 0
 	TIMSK3 = 0b00000010;
 
