@@ -5,7 +5,6 @@
  *  Author: UEKI
  */
 
-
 #include <avr/io.h>
 #define F_CPU 20000000
 #include <util/delay.h>
@@ -270,7 +269,6 @@ void E_digit_partition(void)
  *	Descripution  : CTCを使って手軽にカウントする
  *					ISR(TIMER1_COMPA_vect)
  */
-
 void Init_Timer1(void)
 {
 	//TCCR1A(Timer Counter1 Control Register A)

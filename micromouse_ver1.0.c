@@ -39,19 +39,9 @@ struct{
 	
 }Left = {0, 0, 0}, LeftFront = {0, 0, 0}, RightFront ={0, 0, 0}, Right ={0, 0, 0};
 
-
 //ロータリーエンコーダの値を格納する変数
 volatile unsigned int Left_RotaryEncorder_val;
 volatile unsigned int Right_RotaryEncorder_val;
-
-struct{
-	
-	
-	
-	
-	};
-
-
 
 int main(void)
 {		
@@ -238,7 +228,6 @@ void digit_partition(void)
  *	Descripution  : CTCを使って手軽にカウントする
  *					ISR(TIMER1_COMPA_vect)
  */
-
 void Init_Timer1(void)
 {
 	//TCCR1A(Timer Counter1 Control Register A)

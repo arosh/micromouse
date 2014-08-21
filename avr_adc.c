@@ -70,7 +70,8 @@ void Init_ADC_get(void)
 /*
  *
  *	Function Name :	Init_ADC
- *	Title        : AD変換用レジスタの設定
+ *	Function Name :	Init_ADC														
+ *	Titlle        : AD変換用レジスタの設定											
  *  Input         :	ADC0, ADC1, ADC2, ADC3, ADC4, ADC5								
  *  output        :	なし																
  *	Description   :	通常動作モード

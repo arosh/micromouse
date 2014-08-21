@@ -5,7 +5,6 @@
  *  Author: takemichi
  */
 
-
 #ifndef AVR_ADC_H_
 #define AVR_ADC_H_
 
@@ -14,6 +13,5 @@ void Init_ADC(void);
 
 //AD変換のchを切り替えて値を取得していく関数
 void Init_ADC_get(void);
-
 
 #endif /* AVR_ADC_H_ */

@@ -5,7 +5,6 @@
  *  Author: UEKI
  */
 
-
 #ifndef AVR_LCD_H_
 #define AVR_LCD_H_
 
@@ -29,6 +28,5 @@ void lcd_str(char *str);
 
 //クリア関数
 void lcd_clear(void);
-
 
 #endif /* AVR_LCD_H_ */

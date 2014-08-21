@@ -25,6 +25,25 @@
 #include <util/delay.h>
 #include "avr_moter.h"
 
+void moter_right(int x)
+{
+	if(x >= 0){
+		Init_CW_right(x);
+	}
+	else{
+		Init_CCW_right(-x);
+	}
+}
+
+void moter_left(int x)
+{
+	if(x >= 0){
+		Init_CW_left(x);
+	}
+	else{
+		Init_CCW_left(-x);
+	}
+}
 
 //とりあえずの回転テスト用関数
 void Init_CW_left(unsigned char pwm)
@@ -99,18 +118,18 @@ void Init_Timer0(void)
    *       PWM動作をするときには0を設定する(データシート p.66)
 	 *		   #7 = 0, #6 = 0
 	 *
-	 *	5,4: リザーブビット
+	 *	     5,4: リザーブビット
 	 *		   #5 = 0, #4 = 0
 	 *
 	 *	3  : PWM波形の種類の設定(上記に述べた設定の残り)
 	 *       #3 = 0
 	 *
 	 *	2,1,0: 分周器設定
-	 *			   ATmaga88Pの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
-	 *			   MNCTのサイトでは実用で48kHzがいいとあるが、分周の関係で10kか78kになってしまう。
-	 *			   78kだと電流がながれにくくなりFETが発熱するので、騒音は出るが10kで動かすことにする。
-	 *			   20MHz/0xFF(255)/8 ==> 約10kHz　計算式はDatasheet p.62 を参照
-	 *			   #2 = 0, #1 = 1, #0 = 0
+	 *			ATmaga88Pの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
+	 *			MNCTのサイトでは実用で48kHzがいいとあるが、分周の関係で10kか78kになってしまう。
+	 *			78kだと電流がながれにくくなりFETが発熱するので、騒音は出るが10kで動かすことにする。
+	 *			20MHz/0xFF(256)/8 ==> 約10kHz 計算式はDatasheet p.62 を参照
+	 *			#2 = 0, #1 = 1, #0 = 0
 	 */
 	TCCR0B = 0b00000010;
 	
