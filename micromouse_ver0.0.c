@@ -53,7 +53,6 @@ float liner_change(int x)
 	return 0.0041 * x * x - 1.446 * x + 162.87;
 }
 
-
 //各センサ値を格納する変数
 volatile unsigned char Left_Sensor_val;
 volatile unsigned char LeftFront_Sensor_val;
@@ -68,7 +67,6 @@ struct{
 	
 }S_Left = {0, 0, 0}, S_LeftFront = {0, 0, 0}, S_RightFront ={0, 0, 0}, S_Right ={0, 0, 0};
 
-
 //ロータリーエンコーダの値を格納する変数
 volatile unsigned int Left_RotaryEncorder_val  = 32768;
 volatile unsigned int Right_RotaryEncorder_val = 32768;
@@ -82,7 +80,6 @@ struct{
 	volatile unsigned int dig1;
 	
 }E_Left = {0, 0, 0, 0, 0}, E_Right = {0, 0, 0, 0, 0};
-
 
 ISR(TIMER1_COMPA_vect){
 	
