@@ -482,8 +482,8 @@ void Inti_Timer1(void)
 	//
 	//	1,0: PWM波形の種類の設定(下記のTCCR1Bにも設定が跨っているので注意)
 	//		 CTCモード
-	//       #1 = 1, #0 = 0
-	TCCR1A = 0b00000010;
+	//       #1 = 0, #0 = 0
+	TCCR1A = 0b00000000;
 	
 	//TCCR1B(Timer Counter1 Control register B)
 	//	7,6: OC1A,OC1B 強制変更設定
@@ -501,7 +501,7 @@ void Inti_Timer1(void)
 	//         分周は1/1024
 	//         20MHz/1024 ==> 約20kHz
 	//         #2 = 1, #1 = 0, #0 = 1
-	TCCR1B = 0b0000101;
+	TCCR1B = 0b00001101;
 	
 	//TCNT1(Timer Counter1)
 	//		タイマカウンタ(16bit)に直接アクセスできる
