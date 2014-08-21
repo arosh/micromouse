@@ -135,7 +135,7 @@ ISR(TIMER3_COMPA_vect){
 			if(liner_front_val < 70){
 				
 				Inti_CCW_left(15);
-				Inti_CCW_right(10);
+				Inti_CCW_right(11);
 				
 			}else{
 				Inti_CW_right((int)control_right + 45);
