@@ -13,6 +13,7 @@
 #include "avr_lcd.h"
 #include "avr_moter.h"
 #include "avr_adc.h"
+#include <math.h>
 
 //各スイッチのテスト
 void switch_test(void);
@@ -44,6 +45,15 @@ void encoder(void);
 //Beep関数
 void beep(void);
 
+//AD変換値を距離に変換
+float liner_change(int x);
+
+float liner_change(int x)
+{
+	return 0.0041 * x * x - 1.446 * x + 162.87;
+}
+
+
 //各センサ値を格納する変数
 volatile unsigned char Left_Sensor_val;
 volatile unsigned char LeftFront_Sensor_val;
@@ -60,8 +70,8 @@ struct{
 
 
 //ロータリーエンコーダの値を格納する変数
-volatile unsigned int Left_RotaryEncorder_val;
-volatile unsigned int Right_RotaryEncorder_val;
+volatile unsigned int Left_RotaryEncorder_val  = 32768;
+volatile unsigned int Right_RotaryEncorder_val = 32768;
 
 struct{
 	
@@ -71,7 +81,7 @@ struct{
 	volatile unsigned int dig10;
 	volatile unsigned int dig1;
 	
-}E_Left = {0, 0, 0, 0}, E_Right = {0, 0, 0, 0};
+}E_Left = {0, 0, 0, 0, 0}, E_Right = {0, 0, 0, 0, 0};
 
 
 ISR(TIMER1_COMPA_vect){
@@ -83,9 +93,44 @@ ISR(TIMER1_COMPA_vect){
 ISR(TIMER3_COMPA_vect){
 	
 	encoder();
-	Init_CW_right(50);
-	Init_CW_left(55);
+	/*
+	//回れ右
+	const unsigned int REFERENCE_RIGHT_ENCODER = 200;
+	const unsigned int PEFERENCE_LEFT_ENCODER  = 200;
 	
+	unsigned int previous_right_encoder = 32768;
+	unsigned int previous_left_encoder  = 32768;
+	
+	unsigned int error_right_encoder = Right_RotaryEncorder_val  - previous_right_encoder;
+	unsigned int error_left_encoder  = Left_RotaryEncorder_val  - previous_left_encoder;
+	*/
+	
+	const float KP_RIGHT = 0.3;
+	const float KP_LEFT  = 0.3;
+
+	const char REFERENCE_RIGHT = 73;
+	const char REFERENCE_LEFT  = 73;
+	
+	float liner_right_val;
+	float liner_left_val;
+
+	float errer_right = 0.0;
+	float errer_left  = 0.0;
+
+	float control_right = 0.0;
+	float control_left  = 0.0;
+	
+	liner_right_val = liner_change(Right_Sensor_val);
+	liner_left_val  = liner_change(Left_Sensor_val);
+	
+	errer_right = REFERENCE_RIGHT - liner_right_val;
+	errer_left  = REFERENCE_LEFT  - liner_left_val;
+
+	control_right = (KP_RIGHT * errer_right);
+	control_left  = (KP_LEFT  * errer_left);
+	
+	Init_CW_right((int)control_right + 30);
+	Init_CW_left((int)control_left + 30);
 }
 
 int main(void)
