@@ -29,4 +29,11 @@ void lcd_str(char *str);
 //クリア関数
 void lcd_clear(void);
 
+//数値をLCDの現在のカーソル位置から順に表示する
+//valueに値を、digitに表示桁数を渡す
+// 例: lcd_number(321, 3) => 321
+//     lcd_number(321, 2) => 21
+//     lcd_number(321, 4) => 0321
+void lcd_number(int value, int digit);
+
 #endif /* AVR_LCD_H_ */
