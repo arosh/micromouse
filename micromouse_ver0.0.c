@@ -4,8 +4,6 @@
  * Created: 2014/04/07 21:16:13
  *  Author: UEKI
  */
-
-
 #include <avr/io.h>
 #define F_CPU 20000000
 #include <util/delay.h>
@@ -32,12 +30,6 @@ void Init_Timer1(void);
 //timer3のレジスタ設定
 void Init_Timer3(void);
 
-//LCD表示のためにセンサの取得値を桁ごとに分割する関数
-void S_digit_partition(void);
-
-//LCD表示のためにロータリーエンコーダの取得値を桁ごとに分割する関数
-void E_digit_partition(void);
-
 //エンコーダ設定
 void encoder(void);
 
@@ -50,30 +42,16 @@ volatile unsigned char LeftFront_Sensor_val;
 volatile unsigned char RightFront_Sensor_val;
 volatile unsigned char Right_Sensor_val;
 
-struct{
-	volatile unsigned char dig100;
-	volatile unsigned char dig10;
-	volatile unsigned char dig1;
-} S_Left = {0, 0, 0}, S_LeftFront = {0, 0, 0}, S_RightFront = {0, 0, 0}, S_Right = {0, 0, 0};
-
-
 //ロータリーエンコーダの値を格納する変数
 volatile unsigned int Left_RotaryEncorder_val;
 volatile unsigned int Right_RotaryEncorder_val;
 
-struct{
-	volatile unsigned int dig10000;
-	volatile unsigned int dig1000;
-	volatile unsigned int dig100;
-	volatile unsigned int dig10;
-	volatile unsigned int dig1;
-} E_Left = {0, 0, 0, 0}, E_Right = {0, 0, 0, 0};
-
-
+// センサ用割り込み
 ISR(TIMER1_COMPA_vect){
 	Init_ADC_get();
 }
 
+// エンコーダ用割り込み
 ISR(TIMER3_COMPA_vect){
 	encoder();
 	Init_CW_right(50);
@@ -213,10 +191,8 @@ void encoder(void)
 	m = dir_left[left & 15];
 	n = dir_right[right & 15];
 	
-	
 	Left_RotaryEncorder_val  += m;	
 	Right_RotaryEncorder_val += n;
-
 }
 
 //各センサの値とロータリーエンコーダのカウント数を同時にLCDに表示
@@ -226,41 +202,24 @@ void print_all_sensor(void)
 	E_digit_partition();
 	
 	lcd_pos(0,0);
-	lcd_data(0x30 + E_Left.dig10000);
-	lcd_data(0x30 + E_Left.dig1000);
-	lcd_data(0x30 + E_Left.dig100);
-	lcd_data(0x30 + E_Left.dig10);
-	lcd_data(0x30 + E_Left.dig1);
+  lcd_number(Left_RotaryEncorder_val, 5);
 	
 	lcd_pos(0,6);
-	lcd_data(0x30 + E_Right.dig10000);
-	lcd_data(0x30 + E_Right.dig1000);
-	lcd_data(0x30 + E_Right.dig100);
-	lcd_data(0x30 + E_Right.dig10);
-	lcd_data(0x30 + E_Right.dig1);
-	
+  lcd_number(Right_RotaryEncorder_val, 5);
+
 	lcd_pos(1,0);
-	lcd_data(0x30 + S_RightFront.dig100);
-	lcd_data(0x30 + S_RightFront.dig10);
-	lcd_data(0x30 + S_RightFront.dig1);
+  lcd_number(RightFront_Sensor_val, 3);
 	
 	lcd_pos(1,4);
-	lcd_data(0x30 + S_LeftFront.dig100);
-	lcd_data(0x30 + S_LeftFront.dig10);
-	lcd_data(0x30 + S_LeftFront.dig1);
+  lcd_number(LeftFront_Sensor_val, 3);
 	
 	lcd_pos(1,8);
-	lcd_data(0x30 + S_Left.dig100);
-	lcd_data(0x30 + S_Left.dig10);
-	lcd_data(0x30 + S_Left.dig1);
+  lcd_number(Left_Sensor_val, 3);
 	
 	lcd_pos(1,12);
-	lcd_data(0x30 + S_Right.dig100);
-	lcd_data(0x30 + S_Right.dig10);
-	lcd_data(0x30 + S_Right.dig1);
+  lcd_number(Right_Sensor_val, 3);
 	
 	lcd_pos(0,0);
-	
 }
 
 //各センサの値をLCDに表示
@@ -271,51 +230,18 @@ void Print_ADC(void)
 	lcd_str("RF  LF  L   R");
 	
 	lcd_pos(1,0);
-	lcd_data(0x30 + S_RightFront.dig100);
-	lcd_data(0x30 + S_RightFront.dig10);
-	lcd_data(0x30 + S_RightFront.dig1);
+  lcd_number(RightFront_Sensor_val, 3);
 	
 	lcd_pos(1,4);
-	lcd_data(0x30 + S_LeftFront.dig100);
-	lcd_data(0x30 + S_LeftFront.dig10);
-	lcd_data(0x30 + S_LeftFront.dig1);
+  lcd_number(LeftFront_Sensor_val, 3);
 	
 	lcd_pos(1,8);
-	lcd_data(0x30 + S_Left.dig100);
-	lcd_data(0x30 + S_Left.dig10);
-	lcd_data(0x30 + S_Left.dig1);
+  lcd_number(Left_Sensor_val, 3);
 	
 	lcd_pos(1,12);
-	lcd_data(0x30 + S_Right.dig100);
-	lcd_data(0x30 + S_Right.dig10);
-	lcd_data(0x30 + S_Right.dig1);
+  lcd_number(Right_Sensor_val, 3);
 	
 	lcd_pos(0,0);
-
-}
-
-//センサ値の桁をわける(LCDの文字列表示のため)
-void S_digit_partition(void)
-{	
-	//前(左側の)
-	S_Left.dig1			=  Left_Sensor_val % 10;
-	S_Left.dig10		= (Left_Sensor_val / 10) % 10;
-	S_Left.dig100		= (Left_Sensor_val / 100) % 10;
-
-	//左のセンサ
-	S_LeftFront.dig1    =  LeftFront_Sensor_val % 10;
-	S_LeftFront.dig10   = (LeftFront_Sensor_val / 10) % 10;
-	S_LeftFront.dig100	= (LeftFront_Sensor_val/ 100) % 10;
-
-	//右のセンサ
-	S_RightFront.dig1   =  RightFront_Sensor_val % 10;
-	S_RightFront.dig10  = (RightFront_Sensor_val / 10) % 10;
-	S_RightFront.dig100 = (RightFront_Sensor_val / 100) % 10;
-
-	//前(右側)
-	S_Right.dig1		=  Right_Sensor_val % 10;
-	S_Right.dig10		= (Right_Sensor_val / 10) % 10;
-	S_Right.dig100		= (Right_Sensor_val / 100) % 10;
 }
 
 void print_RotaryEncorder(void)
@@ -325,38 +251,12 @@ void print_RotaryEncorder(void)
 	lcd_str("rotary encorder");
 	
 	lcd_pos(1,0);
-	lcd_data(0x30 + E_Left.dig10000);
-	lcd_data(0x30 + E_Left.dig1000);
-	lcd_data(0x30 + E_Left.dig100);
-	lcd_data(0x30 + E_Left.dig10);
-	lcd_data(0x30 + E_Left.dig1);
+  lcd_number(Left_RotaryEncorder_val, 5);
 	
 	lcd_pos(1,6);
-	lcd_data(0x30 + E_Right.dig10000);
-	lcd_data(0x30 + E_Right.dig1000);
-	lcd_data(0x30 + E_Right.dig100);
-	lcd_data(0x30 + E_Right.dig10);
-	lcd_data(0x30 + E_Right.dig1);
+  lcd_number(Right_RotaryEncorder_val, 5);
 	
 	lcd_pos(0,0);
-	
-}
-
-void E_digit_partition(void)
-{
-	//左
-	E_Left.dig1			=  Left_RotaryEncorder_val % 10;
-	E_Left.dig10		= (Left_RotaryEncorder_val / 10) % 10;
-	E_Left.dig100		= (Left_RotaryEncorder_val / 100) % 10;
-	E_Left.dig1000		= (Left_RotaryEncorder_val / 1000) % 10;
-	E_Left.dig10000		= (Left_RotaryEncorder_val / 10000) % 10;
-	
-	//右
-	E_Right.dig1		=  Right_RotaryEncorder_val % 10;
-	E_Right.dig10		= (Right_RotaryEncorder_val / 10) % 10;
-	E_Right.dig100		= (Right_RotaryEncorder_val / 100) % 10;
-	E_Right.dig1000		= (Right_RotaryEncorder_val / 1000) % 10;
-	E_Right.dig10000	= (Right_RotaryEncorder_val / 10000) % 10;
 }
 
 void switch_test(void)
@@ -378,7 +278,6 @@ void switch_test(void)
 		lcd_str("press the button");
 		lcd_pos(0,0);
 	}
-	
 }
 
 /*

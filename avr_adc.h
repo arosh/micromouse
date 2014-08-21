@@ -15,5 +15,4 @@ void Init_ADC(void);
 //AD変換のchを切り替えて値を取得していく関数
 void Init_ADC_get(void);
 
-
 #endif /* AVR_ADC_H_ */
