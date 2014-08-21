@@ -32,12 +32,10 @@
  *
  */
 
-
 #include <avr/io.h>
 #define F_CPU 20000000
 #include <util/delay.h>
 #include "avr_lcd.h"
-
 
 //文字を全消去する
 void lcd_clear(void)
@@ -62,7 +60,6 @@ void lcd_str(char *str)
  *	文字列の最後は位置を(0,0)に戻してあげる(ループするために)	
  *
  */
-
 void lcd_pos(int line, int col)
 {
 	if(line == 0){
@@ -95,14 +92,13 @@ void lcd_init(void)
 
 /* コマンドなのかデータを決定しLCDに送信
  *
- *	1個目の引数で値を、
+ *	1個目の引数で値を (codeの5〜8ビットだけ送信される)
  *	2個目の引数でその値がデータかコマンドかを選択する。(0:コマンド 1:データ)
  *
  */
-
 void lcd_out(int code, int rs)
 {
-	PORTC = (code & 0xF0) | (PORTC & 0x0F);		//PD2,3を使う場合に値が変わらないようにするための処置
+	PORTC = (code & 0b11110000) | (PORTC & 0b00001100);		//PD2,3を使う場合に値が変わらないようにするための処置
 	
 	if(rs == 0){
 		PORTC = code & 0b11111110;				//コマンドを送信する
@@ -115,7 +111,6 @@ void lcd_out(int code, int rs)
 	PORTC = PORTC | 0b00000010;					//Eのフラグを立てる
 	_delay_ms(1);
 	PORTC = PORTC & 0b11111101;					//Eのフラグを戻す
-	
 }
 
 

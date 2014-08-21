@@ -316,7 +316,6 @@ void S_digit_partition(void)
 	S_Right.dig1		=  Right_Sensor_val % 10;
 	S_Right.dig10		= (Right_Sensor_val / 10) % 10;
 	S_Right.dig100		= (Right_Sensor_val / 100) % 10;
-
 }
 
 void print_RotaryEncorder(void)
@@ -358,7 +357,6 @@ void E_digit_partition(void)
 	E_Right.dig100		= (Right_RotaryEncorder_val / 100) % 10;
 	E_Right.dig1000		= (Right_RotaryEncorder_val / 1000) % 10;
 	E_Right.dig10000	= (Right_RotaryEncorder_val / 10000) % 10;
-	
 }
 
 void switch_test(void)
