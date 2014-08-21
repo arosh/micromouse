@@ -3,7 +3,7 @@
  *
  * Created: 2014/04/07 21:16:13
  *  Author: UEKI
- */ 
+ */
 
 
 #include <avr/io.h>
@@ -49,7 +49,7 @@ struct{
 	
 	
 	
-	}; 
+	};
 
 
 
@@ -76,7 +76,7 @@ int main(void)
 	 * 3: 左前センサADC入力
 	 *
 	 * 4: 右前センサのLED吸い込み
-	 * 5: 右センサのLED吸い込み 
+	 * 5: 右センサのLED吸い込み
 	 * 6: 左センサのLED吸い込み
 	 * 7: 左前センサのLED吸い込み
 	 *
@@ -123,8 +123,8 @@ int main(void)
 	 * 1: 左ロータリーエンコーダのパルス波Bを入力
 	 * 2: 右ロータリーエンコーダのパルス波Aを入力
 	 * 3: 右ロータリーエンコーダのパルス波Bを入力
-	 * 4: 
-	 * 5: 
+	 * 4:
+	 * 5:
 	 * 6: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
 	 * 7: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
 	 *
@@ -135,7 +135,7 @@ int main(void)
 	//LCD初期化
 	lcd_init();
 	
-	//タイマレジスタ設定(0:右モーターPWM 1:姿勢制御関係呼び出し 2:左モーターPWM) 
+	//タイマレジスタ設定(0:右モーターPWM 1:姿勢制御関係呼び出し 2:左モーターPWM)
 	Init_Timer0();
 	Init_Timer2();
 	
@@ -204,13 +204,13 @@ void Print_ADC(void)
 
 }
 
-//センサ値の桁をわける(LCDの文字列表示のため) 
+//センサ値の桁をわける(LCDの文字列表示のため)
 void digit_partition(void)
 {	
 	//前(左側の)
 	Left.dig1    =  Left_Sensor_val % 10;
 	Left.dig10   = (Left_Sensor_val / 10) % 10;
-	Left.dig100  = (Left_Sensor_val / 100) % 10; 
+	Left.dig100  = (Left_Sensor_val / 100) % 10;
 
 	//左のセンサ
 	LeftFront.dig1    =  LeftFront_Sensor_val % 10;
@@ -238,7 +238,7 @@ void digit_partition(void)
  *	Descripution  : CTCを使って手軽にカウントする
  *					ISR(TIMER1_COMPA_vect)
  */
- 
+
 void Init_Timer1(void)
 {
 	//TCCR1A(Timer Counter1 Control Register A)

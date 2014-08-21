@@ -3,7 +3,7 @@
  *
  * Created: 2014/04/18 20:21:16
  *  Author: UEKI
- */ 
+ */
 
 
 #ifndef AVR_MOTER_H_

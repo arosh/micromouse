@@ -3,7 +3,7 @@
  *
  * Created: 2014/04/18 20:20:03
  *  Author: UEKI
- */ 
+ */
 
 /*
  * specification
@@ -69,7 +69,7 @@ void Init_CCW_left(unsigned char pwm)
  *	Descripution  : 高速PWMモード使用しPWM波を出力
  *					
  */
- 
+
 void Init_Timer0(void)
 {
 	/*
@@ -147,7 +147,7 @@ void Init_Timer0(void)
  *	Descripution  : 高速PWMモードを使用しPWM波を出力する
  *
  */
- 
+
 void Init_Timer2(void)
 {
 	/*

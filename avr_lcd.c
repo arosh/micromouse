@@ -3,7 +3,7 @@
  *
  * Created: 2014/04/04 16:51:06
  *  Author: UEKI
- */ 
+ */
 
 /*
  * specification
@@ -17,7 +17,7 @@
  *
  *
  * PORTの繋ぎ方
- * 
+ *
  * 0: RS
  * 1: E
  * 2
@@ -91,7 +91,6 @@ void lcd_init(void)
 	lcd_cmd(0x06);
 	lcd_cmd(0x02);
 	lcd_cmd(0x01);
-	
 }
 
 /* コマンドなのかデータを決定しLCDに送信
