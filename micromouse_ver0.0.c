@@ -51,12 +51,10 @@ volatile unsigned char RightFront_Sensor_val;
 volatile unsigned char Right_Sensor_val;
 
 struct{
-	
 	volatile unsigned char dig100;
 	volatile unsigned char dig10;
 	volatile unsigned char dig1;
-	
-}S_Left = {0, 0, 0}, S_LeftFront = {0, 0, 0}, S_RightFront ={0, 0, 0}, S_Right ={0, 0, 0};
+} S_Left = {0, 0, 0}, S_LeftFront = {0, 0, 0}, S_RightFront = {0, 0, 0}, S_Right = {0, 0, 0};
 
 
 //ロータリーエンコーダの値を格納する変数
@@ -64,28 +62,22 @@ volatile unsigned int Left_RotaryEncorder_val;
 volatile unsigned int Right_RotaryEncorder_val;
 
 struct{
-	
 	volatile unsigned int dig10000;
 	volatile unsigned int dig1000;
 	volatile unsigned int dig100;
 	volatile unsigned int dig10;
 	volatile unsigned int dig1;
-	
-}E_Left = {0, 0, 0, 0}, E_Right = {0, 0, 0, 0};
+} E_Left = {0, 0, 0, 0}, E_Right = {0, 0, 0, 0};
 
 
 ISR(TIMER1_COMPA_vect){
-	
 	Init_ADC_get();
-	
 }
 
 ISR(TIMER3_COMPA_vect){
-	
 	encoder();
 	Init_CW_right(50);
 	Init_CW_left(55);
-	
 }
 
 int main(void)
@@ -139,7 +131,7 @@ int main(void)
 	 *	PORTC
 	 *
 	 * 0: LCD表示用(RSの切り替え 0:コマンド 1:データ)
-	 * 1: LCD表示用(Eのフラグ設定　このbitが立ちがるとLCDにデータが送信される)
+	 * 1: LCD表示用(Eのフラグ設定 このbitが立ちがるとLCDにデータが送信される)
 	 * 2:
 	 * 3:
 	 * 4: LCD表示用(データバス)
@@ -165,7 +157,8 @@ int main(void)
 	 *
 	 */
 	DDRD  = 0b11000000;
-	PORTD = 0b00001111;			//RE12Dはプルアップ不要らしいが念のためプルアップは有効に
+	PORTD = 0b00001111;			//RE12D(ロータリーエンコーダの名前)は
+                          //プルアップ不要らしいが念のためプルアップは有効に
 	
 	//LCD初期化
 	lcd_init();
@@ -177,19 +170,16 @@ int main(void)
 	Init_Timer3();
 	
 	//AD変換レジスタ設定
-	
-	loop_until_bit_is_clear(PINB,PINB2);		//スタートスイッチ(青色)が押されるまで待機
+	loop_until_bit_is_clear(PINB, PINB2);		//スタートスイッチ(青色)が押されるまで待機
 	beep();										//ブザーを鳴らす
 	
 	sei();		//割り込み許可
 	
 	while(1){
-		
 		print_all_sensor();
 		//print_RotaryEncorder();
 		//Print_ADC();
 		//switch_test();
-	
 	}
 
 	return 0;
