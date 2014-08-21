@@ -9,10 +9,10 @@
 #ifndef AVR_ADC_H_
 #define AVR_ADC_H_
 
-//ACD�̃��W�X�^�ݒ�
+//ACDのレジスタ設定
 void Init_ADC(void);
 
-//AD�ϊ���ch��؂�ւ��Ēl���擾���Ă����֐�
+//AD変換のchを切り替えて値を取得していく関数
 void Init_ADC_get(void);
 
 

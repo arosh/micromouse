@@ -9,25 +9,25 @@
 #ifndef AVR_LCD_H_
 #define AVR_LCD_H_
 
-//LCDƒRƒ“ƒgƒ[ƒ‰‚Ì‰Šúİ’è
+//LCDã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ©ã®åˆæœŸè¨­å®š
 void lcd_init(void);
 
-//LCD‘—Mİ’è
+//LCDé€ä¿¡è¨­å®š
 void lcd_out(int code, int rs);
 
-//ƒRƒ}ƒ“ƒh‘—MŠÖ”
+//ã‚³ãƒãƒ³ãƒ‰é€ä¿¡é–¢æ•°
 void lcd_cmd(int cmd);
 
-//ƒf[ƒ^‘—MŠÖ”
+//ãƒ‡ãƒ¼ã‚¿é€ä¿¡é–¢æ•°
 void lcd_data(int asci);
 
-//•\¦ˆÊ’u’²®ŠÖ”
+//è¡¨ç¤ºä½ç½®èª¿æ•´é–¢æ•°
 void lcd_pos(int line, int col);
 
-//•¶š—ñ‘—MŠÖ”
+//æ–‡å­—åˆ—é€ä¿¡é–¢æ•°
 void lcd_str(char *str);
 
-//ƒNƒŠƒAŠÖ”
+//ã‚¯ãƒªã‚¢é–¢æ•°
 void lcd_clear(void);
 
 
