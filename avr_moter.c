@@ -23,6 +23,25 @@
 #include <util/delay.h>
 #include "avr_moter.h"
 
+void moter_right(int x)
+{
+	if(x >= 0){
+		Inti_CW_right(x);
+	}
+	else{
+		Inti_CCW_right(-x);
+	}
+}
+
+void moter_left(int x)
+{
+	if(x >= 0){
+		Inti_CW_left(x);
+	}
+	else{
+		Inti_CCW_left(-x);
+	}
+}
 
 //とりあえずの回転テスト用関数
 void Inti_CW_left(unsigned char pwm)

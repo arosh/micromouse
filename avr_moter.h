@@ -9,6 +9,12 @@
 #ifndef AVR_MOTER_H_
 #define AVR_MOTER_H_
 
+//引数が正であれば前進方向に回転,負であれば後進方向に回転
+void moter_right(int x);
+
+//引数が正であれば前進方向に回転,負であれば後進方向に回転
+void moter_left(int x);
+	
 //タイマー0のレジスタ設定(8bit高速PWMモード)
 void Inti_Timer0(void);
 

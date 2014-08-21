@@ -45,6 +45,10 @@ void encoder(void);
 //Beep関数
 void beep(void);
 
+void beep_start(void);
+
+void beep_end(void);
+
 //AD変換値を距離に変換
 float liner_change(int x);
 
@@ -83,8 +87,8 @@ struct{
 	
 }E_Left = {0, 0, 0, 0, 0}, E_Right = {0, 0, 0, 0, 0};
 
-unsigned int REFERENCE_RIGHT_ENCODER;
-unsigned int PEFERENCE_LEFT_ENCODER;
+unsigned int reference_right_encoder;
+unsigned int reference_left_encoder;
 	
 ISR(TIMER1_COMPA_vect){
 	
@@ -95,64 +99,96 @@ ISR(TIMER1_COMPA_vect){
 ISR(TIMER3_COMPA_vect){
 	
 	encoder();
+	char liner_front_val = (liner_change(RightFront_Sensor_val) +liner_change(LeftFront_Sensor_val)) * 0.5;
+	static char turn_flag = 0;
 	
-	/*
-	//回れ右
-	
-	const float KP_RIGHT = 0.15;
-	const float KP_LEFT  = 0.15;
-	
-	REFERENCE_RIGHT_ENCODER = Right_RotaryEncorder_val - 183;
-	PEFERENCE_LEFT_ENCODER  = Left_RotaryEncorder_val + 183;
-	
-	unsigned int error_right_encoder = fabs(REFERENCE_RIGHT_ENCODER  - Right_RotaryEncorder_val);
-	unsigned int error_left_encoder  = fabs(PEFERENCE_LEFT_ENCODER  - Left_RotaryEncorder_val);
-	
-	float control_right = KP_RIGHT * error_right_encoder;
-	float control_left  = KP_LEFT  * error_left_encoder;
-	
-	Inti_CCW_right((int)control_right);
-	Inti_CW_left((int)control_left);
-	*/
-	
-	char liner_front_val = liner_change(RightFront_Sensor_val);
-	
-	//前壁ないとき
-	if(liner_front_val > 59){
+	//ターンフラグが立っていないとき
+	if(turn_flag == 0){
 		
-		//直進(側壁あり)
-		const float KP_RIGHT = 0.25;
-		const float KP_LEFT  = 0.25;
+		//前壁がないとき
+		if(liner_front_val > 59){
+			
+			//直進
+			const float KP_RIGHT = 0.15;
+			const float KP_LEFT  = 0.15;
 
-		const char REFERENCE_RIGHT = 73;
-		const char REFERENCE_LEFT  = 73;
+			const char REFERENCE_RIGHT = 73;
+			const char REFERENCE_LEFT  = 73;
 		
-		float liner_right_val;
-		float liner_left_val;
+			float liner_right_val;
+			float liner_left_val;
 
-		float errer_right = 0.0;
-		float errer_left  = 0.0;
+			float errer_right = 0.0;
+			float errer_left  = 0.0;
 
-		float control_right = 0.0;
-		float control_left  = 0.0;
+			float control_right = 0.0;
+			float control_left  = 0.0;
 		
-		liner_right_val = liner_change(Right_Sensor_val);
-		liner_left_val  = liner_change(Left_Sensor_val);
+			liner_right_val = liner_change(Right_Sensor_val);
+			liner_left_val  = liner_change(Left_Sensor_val);
 		
-		errer_right = REFERENCE_RIGHT - liner_right_val;
-		errer_left  = REFERENCE_LEFT  - liner_left_val;
+			errer_right = REFERENCE_RIGHT - liner_right_val;
+			errer_left  = REFERENCE_LEFT  - liner_left_val;
 
-		control_right = (KP_RIGHT * errer_right);
-		control_left  = (KP_LEFT  * errer_left);
-		
-		Inti_CW_right((int)control_right + 30);
-		Inti_CW_left((int)control_left + 37);
+			control_right = (KP_RIGHT * errer_right);
+			control_left  = (KP_LEFT  * errer_left);
+			if(liner_front_val < 70){
+				
+				Inti_CCW_left(15);
+				Inti_CCW_right(10);
+				
+			}else{
+				Inti_CW_right((int)control_right + 45);
+				Inti_CW_left((int)control_left + 47);
+			}
+		}
+		//前壁があるとき
+		else{
+			
+			Inti_CW_left(0);
+			Inti_CW_right(0);
+			
+			turn_flag = 1;
+			
+		}
 	}
+	
+	//ターンフラグが立っているとき
 	else{
-		Inti_CW_left(0);
-		Inti_CW_right(0);
+		
+		//ターンをする
+		reference_right_encoder = Right_RotaryEncorder_val - 190;
+		reference_left_encoder  = Left_RotaryEncorder_val + 190;
+		
+		const float KP_RIGHT = 0.3;
+		const float KP_LEFT  = 0.32;
+		
+		int error_right_encoder = reference_right_encoder  - Right_RotaryEncorder_val;
+		int error_left_encoder  = reference_left_encoder  - Left_RotaryEncorder_val;
+		
+		float control_right = KP_RIGHT * error_right_encoder;
+		float control_left  = KP_LEFT  * error_left_encoder;
+		
+		moter_right((int)control_right - 10);
+		moter_left((int)control_left + 20);
+		
+		//
+		if( reference_left_encoder >  Left_RotaryEncorder_val){
+			
+			//前壁があるとき
+			if(liner_front_val < 59){
+				
+				turn_flag = 1;
+				
+			}
+			//前壁がないとき
+			else{
+				
+				turn_flag = 0;
+				
+			}
+		}
 	}
-	
 }
 
 int main(void)
@@ -266,6 +302,16 @@ void beep(void)
 {
 	PORTB = 0b11100111;
 	_delay_ms(1500);
+	PORTB = 0b11100110;
+}
+
+void beep_start(void)
+{
+	PORTB = 0b11100111;
+}
+
+void beep_end(void)
+{
 	PORTB = 0b11100110;
 }
 
@@ -483,7 +529,7 @@ void Inti_Timer1(void)
 	//	1,0: PWM波形の種類の設定(下記のTCCR1Bにも設定が跨っているので注意)
 	//		 CTCモード
 	//       #1 = 0, #0 = 0
-	TCCR1A = 0b00000000;
+	TCCR1A = 0b00000010;
 	
 	//TCCR1B(Timer Counter1 Control register B)
 	//	7,6: OC1A,OC1B 強制変更設定
@@ -501,7 +547,7 @@ void Inti_Timer1(void)
 	//         分周は1/1024
 	//         20MHz/1024 ==> 約20kHz
 	//         #2 = 1, #1 = 0, #0 = 1
-	TCCR1B = 0b00001101;
+	TCCR1B = 0b00000101;
 	
 	//TCNT1(Timer Counter1)
 	//		タイマカウンタ(16bit)に直接アクセスできる
@@ -525,7 +571,7 @@ void Inti_Timer1(void)
 	//      1クロックは20kHz(50us)に設定しているので、
 	//		3000us/50us = 60となる。
 	//
-	OCR1A = 2000;
+	OCR1A = 1500;
 	
 	//OCR1B(Timer Counter1 Output Compare B Register)
 	//		いつコンペアマッチBをさせるかを設定する(16bit)
@@ -588,7 +634,7 @@ void Inti_Timer3(void)
 	//			大きくなってはいけないので今回のサンプリング周波数は100kHz(10us)とする
 	//			20MHz/64 ==> 約312.5kHz(3.2us)
 	//			#2 = 0, #1 = 1, #0 = 1
-	TCCR3B = 0b0000010;
+	TCCR3B = 0b00000010;
 	
 	//TCNT3(Timer Counter3)
 	//			タイマカウンタ(16bit)に直接アクセスできる
