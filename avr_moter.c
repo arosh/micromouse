@@ -214,3 +214,4 @@ void Init_Timer2(void)
 	 */
 	OCR2B = 0b00000000;
 }
+// vim: noet ts=4 sw=4 sts=0

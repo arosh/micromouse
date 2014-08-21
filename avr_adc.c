@@ -144,3 +144,4 @@ void Init_ADC(void)
 	 */
 	DIDR0 = 0b00001111;
 }
+// vim: noet ts=4 sw=4 sts=0
