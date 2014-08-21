@@ -83,7 +83,9 @@ struct{
 	
 }E_Left = {0, 0, 0, 0, 0}, E_Right = {0, 0, 0, 0, 0};
 
-
+unsigned int REFERENCE_RIGHT_ENCODER;
+unsigned int PEFERENCE_LEFT_ENCODER;
+	
 ISR(TIMER1_COMPA_vect){
 	
 	Inti_ADC_get();
@@ -93,44 +95,63 @@ ISR(TIMER1_COMPA_vect){
 ISR(TIMER3_COMPA_vect){
 	
 	encoder();
+	
 	/*
 	//âÒÇÍâE
-	const unsigned int REFERENCE_RIGHT_ENCODER = 200;
-	const unsigned int PEFERENCE_LEFT_ENCODER  = 200;
 	
-	unsigned int previous_right_encoder = 32768;
-	unsigned int previous_left_encoder  = 32768;
+	const float KP_RIGHT = 0.15;
+	const float KP_LEFT  = 0.15;
 	
-	unsigned int error_right_encoder = Right_RotaryEncorder_val  - previous_right_encoder;
-	unsigned int error_left_encoder  = Left_RotaryEncorder_val  - previous_left_encoder;
+	REFERENCE_RIGHT_ENCODER = Right_RotaryEncorder_val - 183;
+	PEFERENCE_LEFT_ENCODER  = Left_RotaryEncorder_val + 183;
+	
+	unsigned int error_right_encoder = fabs(REFERENCE_RIGHT_ENCODER  - Right_RotaryEncorder_val);
+	unsigned int error_left_encoder  = fabs(PEFERENCE_LEFT_ENCODER  - Left_RotaryEncorder_val);
+	
+	float control_right = KP_RIGHT * error_right_encoder;
+	float control_left  = KP_LEFT  * error_left_encoder;
+	
+	Inti_CCW_right((int)control_right);
+	Inti_CW_left((int)control_left);
 	*/
 	
-	const float KP_RIGHT = 0.3;
-	const float KP_LEFT  = 0.3;
-
-	const char REFERENCE_RIGHT = 73;
-	const char REFERENCE_LEFT  = 73;
+	char liner_front_val = liner_change(RightFront_Sensor_val);
 	
-	float liner_right_val;
-	float liner_left_val;
+	//ëOï«Ç»Ç¢Ç∆Ç´
+	if(liner_front_val > 59){
+		
+		//íºêi(ë§ï«Ç†ÇË)
+		const float KP_RIGHT = 0.25;
+		const float KP_LEFT  = 0.25;
 
-	float errer_right = 0.0;
-	float errer_left  = 0.0;
+		const char REFERENCE_RIGHT = 73;
+		const char REFERENCE_LEFT  = 73;
+		
+		float liner_right_val;
+		float liner_left_val;
 
-	float control_right = 0.0;
-	float control_left  = 0.0;
-	
-	liner_right_val = liner_change(Right_Sensor_val);
-	liner_left_val  = liner_change(Left_Sensor_val);
-	
-	errer_right = REFERENCE_RIGHT - liner_right_val;
-	errer_left  = REFERENCE_LEFT  - liner_left_val;
+		float errer_right = 0.0;
+		float errer_left  = 0.0;
 
-	control_right = (KP_RIGHT * errer_right);
-	control_left  = (KP_LEFT  * errer_left);
-	
-	Inti_CW_right((int)control_right + 30);
-	Inti_CW_left((int)control_left + 30);
+		float control_right = 0.0;
+		float control_left  = 0.0;
+		
+		liner_right_val = liner_change(Right_Sensor_val);
+		liner_left_val  = liner_change(Left_Sensor_val);
+		
+		errer_right = REFERENCE_RIGHT - liner_right_val;
+		errer_left  = REFERENCE_LEFT  - liner_left_val;
+
+		control_right = (KP_RIGHT * errer_right);
+		control_left  = (KP_LEFT  * errer_left);
+		
+		Inti_CW_right((int)control_right + 30);
+		Inti_CW_left((int)control_left + 37);
+	}
+	else{
+		Inti_CW_left(0);
+		Inti_CW_right(0);
+	}
 	
 }
 
