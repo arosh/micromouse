@@ -3,7 +3,7 @@
  *
  * Created: 2014/04/04 16:27:33
  *  Author: UEKI
- */ 
+ */
 
 
 #ifndef AVR_LCD_H_

@@ -3,7 +3,7 @@
  *
  * Created: 2014/04/22 14:38:09
  *  Author: takemichi
- */ 
+ */
 
 
 #ifndef AVR_ADC_H_

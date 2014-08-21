@@ -3,7 +3,7 @@
  *
  * Created: 2014/04/22 14:37:38
  *  Author: takemichi
- */ 
+ */
 
 #include <avr/io.h>
 #define F_CPU 20000000
@@ -16,7 +16,7 @@ volatile unsigned char Left_Sensor_val = 0;
 volatile unsigned char LeftFront_Sensor_val = 0;
 volatile unsigned char RightFront_Sensor_val = 0;
 volatile unsigned char Right_Sensor_val = 0;
-volatile unsigned char adc_chanel = 0; 
+volatile unsigned char adc_chanel = 0;
 
 
 ISR(ADC_vect){

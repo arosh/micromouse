@@ -3,7 +3,7 @@
  *
  * Created: 2014/04/07 21:16:13
  *  Author: UEKI
- */ 
+ */
 
 
 #include <avr/io.h>
@@ -153,7 +153,7 @@ int main(void)
 	 * 3: 右前センサ(左)ADC入力
 	 *
 	 * 4: 左前センサのLED制御
-	 * 5: 左センサのLED制御 
+	 * 5: 左センサのLED制御
 	 * 6: 右センサのLED制御
 	 * 7: 右前センサのLED制御
 	 *
@@ -174,7 +174,7 @@ int main(void)
 	 * 7: 書き込み用ISPに使用(SCK)
 	 *
 	 */
-	DDRB  = 0b00011001;						
+	DDRB  = 0b00011001;
 	PORTB = 0b11100110;
 	
 	/*
@@ -190,7 +190,7 @@ int main(void)
 	 * 7: LCD表示用(データバス)
 	 *
 	 */
-	DDRC  = 0b11110011;					
+	DDRC  = 0b11110011;
 	PORTC = 0b00000000;
 	
 	/*
@@ -200,8 +200,8 @@ int main(void)
 	 * 1: 左ロータリーエンコーダのパルス波Bを入力
 	 * 2: 右ロータリーエンコーダのパルス波Aを入力
 	 * 3: 右ロータリーエンコーダのパルス波Bを入力
-	 * 4: 
-	 * 5: 
+	 * 4:
+	 * 5:
 	 * 6: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
 	 * 7: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
 	 *
@@ -212,7 +212,7 @@ int main(void)
 	//LCD初期化
 	lcd_init();
 	
-	//タイマレジスタ設定(0:右モーターPWM 1:センサ用 2:左モーターPWM 3:エンコーダ読み取り＋姿勢制御) 
+	//タイマレジスタ設定(0:右モーターPWM 1:センサ用 2:左モーターPWM 3:エンコーダ読み取り＋姿勢制御)
 	Init_Timer0();
 	Init_Timer2();
 	Init_Timer1();
@@ -343,13 +343,13 @@ void Print_ADC(void)
 
 }
 
-//センサ値の桁をわける(LCDの文字列表示のため) 
+//センサ値の桁をわける(LCDの文字列表示のため)
 void S_digit_partition(void)
 {	
 	//前(左側の)
 	S_Left.dig1			=  Left_Sensor_val % 10;
 	S_Left.dig10		= (Left_Sensor_val / 10) % 10;
-	S_Left.dig100		= (Left_Sensor_val / 100) % 10; 
+	S_Left.dig100		= (Left_Sensor_val / 100) % 10;
 
 	//左のセンサ
 	S_LeftFront.dig1    =  LeftFront_Sensor_val % 10;
@@ -440,7 +440,7 @@ void switch_test(void)
  *	Descripution  : CTCを使って手軽にカウントする
  *					ISR(TIMER1_COMPA_vect)
  */
- 
+
 void Init_Timer1(void)
 {
 	//TCCR1A(Timer Counter1 Control Register A)
