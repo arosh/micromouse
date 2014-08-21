@@ -144,3 +144,4 @@ void lcd_number(int value, int digit) {
     base /= 10;
   }
 }
+// vim: noet ts=4 sw=4 sts=0
