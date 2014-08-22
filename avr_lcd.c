@@ -81,12 +81,12 @@ void lcd_init(void)
 	_delay_ms(1);
 	lcd_out(0x20, 0);
 	_delay_ms(1);
-	lcd_cmd(0x28);
+	lcd_cmd(0x28); // functionset | 4bitmode | 2line | 5x8dots
 	lcd_cmd(0x08);
-	lcd_cmd(0x0C);
-	lcd_cmd(0x06);
+	lcd_cmd(0x0C); // displaycontrol | displayon | cursoroff | blinkoff
+	lcd_cmd(0x06); // entrymodeset | entryleft | entryshiftdecrement
 	lcd_cmd(0x02);
-	lcd_cmd(0x01);
+	lcd_cmd(0x01); // cleardisplay
 }
 
 /* コマンドなのかデータを決定しLCDに送信
