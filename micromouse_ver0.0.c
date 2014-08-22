@@ -144,18 +144,13 @@ ISR(TIMER3_COMPA_vect){
 		
 		//
 		if( reference_left_encoder >  Left_RotaryEncorder_val){
-			
 			//前壁があるとき
 			if(liner_front_val < 59){
-				
 				turn_flag = 1;
-				
 			}
 			//前壁がないとき
 			else{
-				
 				turn_flag = 0;
-				
 			}
 		}
 	}
@@ -244,13 +239,13 @@ int main(void)
 	lcd_init();
 	
 	//タイマレジスタ設定
-  //0:右モーターPWM
+	//0:右モーターPWM
 	Init_Timer0();
-  //2:左モーターPWM
+	//2:左モーターPWM
 	Init_Timer2();
-  //1:センサ用
+	//1:センサ用
 	Init_Timer1();
-  //3:エンコーダ読み取り+姿勢制御
+	//3:エンコーダ読み取り+姿勢制御
 	Init_Timer3();
 	
 	//AD変換レジスタ設定
@@ -312,26 +307,23 @@ void encoder(void)
 //各センサの値とロータリーエンコーダのカウント数を同時にLCDに表示
 void print_all_sensor(void)
 {
-	S_digit_partition();
-	E_digit_partition();
-	
 	lcd_pos(0,0);
-  lcd_number(Left_RotaryEncorder_val, 5);
+	lcd_number(Left_RotaryEncorder_val, 5);
 	
 	lcd_pos(0,6);
-  lcd_number(Right_RotaryEncorder_val, 5);
+	lcd_number(Right_RotaryEncorder_val, 5);
 
 	lcd_pos(1,0);
-  lcd_number(RightFront_Sensor_val, 3);
+	lcd_number(RightFront_Sensor_val, 3);
 	
 	lcd_pos(1,4);
-  lcd_number(LeftFront_Sensor_val, 3);
+	lcd_number(LeftFront_Sensor_val, 3);
 	
 	lcd_pos(1,8);
-  lcd_number(Left_Sensor_val, 3);
+	lcd_number(Left_Sensor_val, 3);
 	
 	lcd_pos(1,12);
-  lcd_number(Right_Sensor_val, 3);
+	lcd_number(Right_Sensor_val, 3);
 	
 	lcd_pos(0,0);
 }
@@ -339,36 +331,32 @@ void print_all_sensor(void)
 //各センサの値をLCDに表示
 void Print_ADC(void)
 {
-	S_digit_partition();
-	
 	lcd_str("RF  LF  L   R");
 	
 	lcd_pos(1,0);
-  lcd_number(RightFront_Sensor_val, 3);
+	lcd_number(RightFront_Sensor_val, 3);
 	
 	lcd_pos(1,4);
-  lcd_number(LeftFront_Sensor_val, 3);
+	lcd_number(LeftFront_Sensor_val, 3);
 	
 	lcd_pos(1,8);
-  lcd_number(Left_Sensor_val, 3);
+	lcd_number(Left_Sensor_val, 3);
 	
 	lcd_pos(1,12);
-  lcd_number(Right_Sensor_val, 3);
+	lcd_number(Right_Sensor_val, 3);
 	
 	lcd_pos(0,0);
 }
 
 void print_RotaryEncorder(void)
 {
-	E_digit_partition();
-	
 	lcd_str("rotary encorder");
 	
 	lcd_pos(1,0);
-  lcd_number(Left_RotaryEncorder_val, 5);
+	lcd_number(Left_RotaryEncorder_val, 5);
 	
 	lcd_pos(1,6);
-  lcd_number(Right_RotaryEncorder_val, 5);
+	lcd_number(Right_RotaryEncorder_val, 5);
 	
 	lcd_pos(0,0);
 }
@@ -419,7 +407,7 @@ void Init_Timer1(void)
 	//	1,0: PWM波形の種類の設定(下記のTCCR1Bにも設定が跨っているので注意)
 	//		   WGM13=0, WGM12=1, WGM11=0, WGM10=0でCTCモード(データシート p.84, 表16-5の番号4)
 	//       #1 = 0, #0 = 0
-  // TODO 設定が間違っているのに何故か動く
+	// TODO 設定が間違っているのに何故か動く
 	TCCR1A = 0b00000010;
 	
 	//TCCR1B(Timer Counter1 Control register B)
@@ -438,8 +426,8 @@ void Init_Timer1(void)
 	//         分周は1/1024
 	//         20MHz/1024 ==> 約20kHz
 	//         #2 = 1, #1 = 0, #0 = 1
-  // TODO 設定が間違っているのに何故か動く
-	TCCR1B = 0b00000101;
+	// TODO 設定が間違っているのに何故か動く
+	TCCR1B = 0b00000010;
 	
 	//TCNT1(Timer Counter1)
 	//		タイマカウンタ(16bit)に直接アクセスできる
@@ -508,7 +496,7 @@ void Init_Timer3(void)
 	TCCR3A = 0b00000000;
 	
 	//TCCR3B(Timer Counter3 Control register B)
-	//	7,6: ICNC3, ICES3 捕獲機道入力という謎の機能 (データシート p.82)
+	//	7,6: ICNC3, ICES3 捕獲起動入力という謎の機能 (データシート p.82)
 	//		   今回は使用しない
 	//		   #7 = 0, #6 = 0
 	//
@@ -524,7 +512,7 @@ void Init_Timer3(void)
 	//			大きくなってはいけないので今回のサンプリング周波数は100kHz(10us)とする
 	//			20MHz/64 ==> 約312.5kHz(3.2us)
 	//			#2 = 0, #1 = 1, #0 = 1
-  // TODO 設定が間違っているのに何故か動く
+	// TODO 設定が間違っているのに何故か動く
 	TCCR3B = 0b00000010;
 	
 	//TCNT3(Timer Counter3)

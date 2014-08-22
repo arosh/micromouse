@@ -113,7 +113,6 @@ void lcd_out(int code, int rs)
 	PORTC = PORTC & 0b11111101;					//Eのフラグを戻す
 }
 
-
 //コマンドを送信する
 void lcd_cmd(int cmd)							//4bitずつ送信
 {
