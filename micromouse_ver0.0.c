@@ -5,9 +5,8 @@
  *  Author: UEKI
  */
 #include <avr/io.h>
-#define F_CPU 20000000
-#include <util/delay.h>
 #include <avr/interrupt.h>
+#include "avr_tools.h"
 #include "avr_lcd.h"
 #include "avr_moter.h"
 #include "avr_adc.h"

@@ -21,8 +21,7 @@
  */
 
 #include <avr/io.h>
-#define F_CPU 2000000
-#include <util/delay.h>
+#include "avr_tools.h"
 #include "avr_moter.h"
 
 void moter_right(int x)
