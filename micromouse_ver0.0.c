@@ -3,9 +3,7 @@
  *
  * Created: 2014/04/07 21:16:13
  *  Author: UEKI
- */ 
-
-
+ */
 #include <avr/io.h>
 #define F_CPU 20000000
 #include <util/delay.h>
@@ -15,41 +13,33 @@
 #include "avr_adc.h"
 #include <math.h>
 
-//ŠeƒXƒCƒbƒ`‚ÌƒeƒXƒg
+//å„ã‚¹ã‚¤ãƒƒãƒã®ãƒ†ã‚¹ãƒˆ
 void switch_test(void);
 
-//ŠeƒZƒ“ƒT‚Ì’l‚ğLCD‚É•\¦
+//å„ã‚»ãƒ³ã‚µã®å€¤ã‚’LCDã«è¡¨ç¤º
 void Print_ADC(void);
 
-//Šeƒ[ƒ^ƒŠ[ƒGƒ“ƒR[ƒ_‚ÌƒJƒEƒ“ƒg”‚ğLCD‚É•\¦
+//å„ãƒ­ãƒ¼ã‚¿ãƒªãƒ¼ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€ã®ã‚«ã‚¦ãƒ³ãƒˆæ•°ã‚’LCDã«è¡¨ç¤º
 void print_RotaryEncorder(void);
 
-//ŠeƒZƒ“ƒT‚Ì’l‚Æƒ[ƒ^ƒŠ[ƒGƒ“ƒR[ƒ_‚ÌƒJƒEƒ“ƒg”‚ğ“¯‚ÉLCD‚É•\¦
+//å„ã‚»ãƒ³ã‚µã®å€¤ã¨ãƒ­ãƒ¼ã‚¿ãƒªãƒ¼ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€ã®ã‚«ã‚¦ãƒ³ãƒˆæ•°ã‚’åŒæ™‚ã«LCDã«è¡¨ç¤º
 void print_all_sensor(void);
 
-//timer1‚ÌƒŒƒWƒXƒ^İ’è
-void Inti_Timer1(void);
+//timer1ã®ãƒ¬ã‚¸ã‚¹ã‚¿è¨­å®š
+void Init_Timer1(void);
 
-//timer3‚ÌƒŒƒWƒXƒ^İ’è
-void Inti_Timer3(void);
+//timer3ã®ãƒ¬ã‚¸ã‚¹ã‚¿è¨­å®š
+void Init_Timer3(void);
 
-//LCD•\¦‚Ì‚½‚ß‚ÉƒZƒ“ƒT‚Ìæ“¾’l‚ğŒ…‚²‚Æ‚É•ªŠ„‚·‚éŠÖ”
-void S_digit_partition(void);
-
-//LCD•\¦‚Ì‚½‚ß‚Éƒ[ƒ^ƒŠ[ƒGƒ“ƒR[ƒ_‚Ìæ“¾’l‚ğŒ…‚²‚Æ‚É•ªŠ„‚·‚éŠÖ”
-void E_digit_partition(void);
-
-//ƒGƒ“ƒR[ƒ_İ’è
+//ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€è¨­å®š
 void encoder(void);
 
-//BeepŠÖ”
+//Beepé–¢æ•°
 void beep(void);
-
 void beep_start(void);
-
 void beep_end(void);
 
-//AD•ÏŠ·’l‚ğ‹——£‚É•ÏŠ·
+//ADå¤‰æ›å€¤ã‚’è·é›¢ã«å¤‰æ›
 float liner_change(int x);
 
 float liner_change(int x)
@@ -57,58 +47,38 @@ float liner_change(int x)
 	return 0.0041 * x * x - 1.446 * x + 162.87;
 }
 
-
-//ŠeƒZƒ“ƒT’l‚ğŠi”[‚·‚é•Ï”
+//å„ã‚»ãƒ³ã‚µå€¤ã‚’æ ¼ç´ã™ã‚‹å¤‰æ•°
 volatile unsigned char Left_Sensor_val;
 volatile unsigned char LeftFront_Sensor_val;
 volatile unsigned char RightFront_Sensor_val;
 volatile unsigned char Right_Sensor_val;
 
-struct{
-	
-	volatile unsigned char dig100;
-	volatile unsigned char dig10;
-	volatile unsigned char dig1;
-	
-}S_Left = {0, 0, 0}, S_LeftFront = {0, 0, 0}, S_RightFront ={0, 0, 0}, S_Right ={0, 0, 0};
-
-
-//ƒ[ƒ^ƒŠ[ƒGƒ“ƒR[ƒ_‚Ì’l‚ğŠi”[‚·‚é•Ï”
+//ãƒ­ãƒ¼ã‚¿ãƒªãƒ¼ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€ã®å€¤ã‚’æ ¼ç´ã™ã‚‹å¤‰æ•°
 volatile unsigned int Left_RotaryEncorder_val  = 32768;
 volatile unsigned int Right_RotaryEncorder_val = 32768;
-
-struct{
-	
-	volatile unsigned int dig10000;
-	volatile unsigned int dig1000;
-	volatile unsigned int dig100;
-	volatile unsigned int dig10;
-	volatile unsigned int dig1;
-	
-}E_Left = {0, 0, 0, 0, 0}, E_Right = {0, 0, 0, 0, 0};
 
 unsigned int reference_right_encoder;
 unsigned int reference_left_encoder;
 	
+// ã‚»ãƒ³ã‚µç”¨å‰²ã‚Šè¾¼ã¿
 ISR(TIMER1_COMPA_vect){
-	
-	Inti_ADC_get();
-	
+	Init_ADC_get();
 }
 
+// ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€ç”¨å‰²ã‚Šè¾¼ã¿
 ISR(TIMER3_COMPA_vect){
 	
 	encoder();
 	char liner_front_val = (liner_change(RightFront_Sensor_val) +liner_change(LeftFront_Sensor_val)) * 0.5;
 	static char turn_flag = 0;
 	
-	//ƒ^[ƒ“ƒtƒ‰ƒO‚ª—§‚Á‚Ä‚¢‚È‚¢‚Æ‚«
+	//ã‚¿ãƒ¼ãƒ³ãƒ•ãƒ©ã‚°ãŒç«‹ã£ã¦ã„ãªã„ã¨ã
 	if(turn_flag == 0){
 		
-		//‘O•Ç‚ª‚È‚¢‚Æ‚«
+		//å‰å£ãŒãªã„ã¨ã
 		if(liner_front_val > 59){
 			
-			//’¼i
+			//ç›´é€²
 			const float KP_RIGHT = 0.15;
 			const float KP_LEFT  = 0.15;
 
@@ -134,29 +104,29 @@ ISR(TIMER3_COMPA_vect){
 			control_left  = (KP_LEFT  * errer_left);
 			if(liner_front_val < 70){
 				
-				Inti_CCW_left(15);
-				Inti_CCW_right(11);
+				Init_CCW_left(15);
+				Init_CCW_right(11);
 				
 			}else{
-				Inti_CW_right((int)control_right + 45);
-				Inti_CW_left((int)control_left + 47);
+				Init_CW_right((int)control_right + 45);
+				Init_CW_left((int)control_left + 47);
 			}
 		}
-		//‘O•Ç‚ª‚ ‚é‚Æ‚«
+		//å‰å£ãŒã‚ã‚‹ã¨ã
 		else{
 			
-			Inti_CW_left(0);
-			Inti_CW_right(0);
+			Init_CW_left(0);
+			Init_CW_right(0);
 			
 			turn_flag = 1;
 			
 		}
 	}
 	
-	//ƒ^[ƒ“ƒtƒ‰ƒO‚ª—§‚Á‚Ä‚¢‚é‚Æ‚«
+	//ã‚¿ãƒ¼ãƒ³ãƒ•ãƒ©ã‚°ãŒç«‹ã£ã¦ã„ã‚‹ã¨ã
 	else{
 		
-		//ƒ^[ƒ“‚ğ‚·‚é
+		//ã‚¿ãƒ¼ãƒ³ã‚’ã™ã‚‹
 		reference_right_encoder = Right_RotaryEncorder_val - 190;
 		reference_left_encoder  = Left_RotaryEncorder_val + 190;
 		
@@ -175,13 +145,13 @@ ISR(TIMER3_COMPA_vect){
 		//
 		if( reference_left_encoder >  Left_RotaryEncorder_val){
 			
-			//‘O•Ç‚ª‚ ‚é‚Æ‚«
+			//å‰å£ãŒã‚ã‚‹ã¨ã
 			if(liner_front_val < 59){
 				
 				turn_flag = 1;
 				
 			}
-			//‘O•Ç‚ª‚È‚¢‚Æ‚«
+			//å‰å£ãŒãªã„ã¨ã
 			else{
 				
 				turn_flag = 0;
@@ -193,106 +163,108 @@ ISR(TIMER3_COMPA_vect){
 
 int main(void)
 {		
-	cli();		//Š„‚è‚İ‹Ö~
+	cli();		//å‰²ã‚Šè¾¼ã¿ç¦æ­¢
 	
 	/*
-	 * ŠÈ’P‚ÈPORT‚Ìà–¾
+	 * ç°¡å˜ãªPORTã®èª¬æ˜
 	 *
-	 * DDR_  •ûŒüƒŒƒWƒXƒ^(0:“ü—Í 1:o—Í)
-	 * PORT_ o—ÍƒŒƒWƒXƒ^(“ü—Í‚Ìê‡ 0:ƒvƒ‹ƒAƒbƒv‹Ö~ 1:ƒvƒ‹ƒAƒbƒv—LŒø)
-	 *					 (o—Í‚Ìê‡ 0:Low 1:High)
+	 * DDR_  æ–¹å‘ãƒ¬ã‚¸ã‚¹ã‚¿(0:å…¥åŠ› 1:å‡ºåŠ›)
+	 * PORT_ å‡ºåŠ›ãƒ¬ã‚¸ã‚¹ã‚¿(å…¥åŠ›ã®å ´åˆ 0:ãƒ—ãƒ«ã‚¢ãƒƒãƒ—ç¦æ­¢ 1:ãƒ—ãƒ«ã‚¢ãƒƒãƒ—æœ‰åŠ¹)
+	 *					 (å‡ºåŠ›ã®å ´åˆ 0:Low 1:High)
 	 *
 	 */
-	
 	
 	/*
 	 *	PORTA
 	 *
-	 * 0: ‰E‘OƒZƒ“ƒT(‰E)ADC“ü—Í
-	 * 1: ‰EƒZƒ“ƒTADC“ü—Í
-	 * 2: ¶ƒZƒ“ƒTADC“ü—Í
-	 * 3: ‰E‘OƒZƒ“ƒT(¶)ADC“ü—Í
+	 * 0: å³å‰ã‚»ãƒ³ã‚µ(å³)ADCå…¥åŠ›
+	 * 1: å³ã‚»ãƒ³ã‚µADCå…¥åŠ›
+	 * 2: å·¦ã‚»ãƒ³ã‚µADCå…¥åŠ›
+	 * 3: å³å‰ã‚»ãƒ³ã‚µ(å·¦)ADCå…¥åŠ›
 	 *
-	 * 4: ¶‘OƒZƒ“ƒT‚ÌLED§Œä
-	 * 5: ¶ƒZƒ“ƒT‚ÌLED§Œä 
-	 * 6: ‰EƒZƒ“ƒT‚ÌLED§Œä
-	 * 7: ‰E‘OƒZƒ“ƒT‚ÌLED§Œä
+	 * 4: å·¦å‰ã‚»ãƒ³ã‚µã®LEDåˆ¶å¾¡
+	 * 5: å·¦ã‚»ãƒ³ã‚µã®LEDåˆ¶å¾¡
+	 * 6: å³ã‚»ãƒ³ã‚µã®LEDåˆ¶å¾¡
+	 * 7: å³å‰ã‚»ãƒ³ã‚µã®LEDåˆ¶å¾¡
 	 *
 	 */
 	DDRA  = 0b11110000;
-	PORTA = 0b00000000;		//ADC‚Åg—p‚·‚éÛ‚Íƒvƒ‹ƒAƒbƒv‹Ö~(’l‚ª•Ï‰»‚·‚é‚½‚ß)
+	PORTA = 0b00000000;		//ADCã§ä½¿ç”¨ã™ã‚‹éš›ã¯ãƒ—ãƒ«ã‚¢ãƒƒãƒ—ç¦æ­¢(å€¤ãŒå¤‰åŒ–ã™ã‚‹ãŸã‚)
 	
 	/*
 	 *	PORTB
 	 *
-	 * 0: Beepo—Í
-	 * 1: òƒXƒCƒbƒ`
-	 * 2: ÂƒXƒCƒbƒ`(INT2 ŠO•”Š„‚İ)
-	 * 3: ‰Eƒ‚[ƒ^[—pPWMo—Í(PWMo—Í‚É‚·‚é‚Æ‚«‚Í•K‚¸DDR‚ğ1‚É‚·‚é‚±‚Æ)
-	 * 4: ‰Eƒ‚[ƒ^[—pPWMo—Í(PWMo—Í‚É‚·‚é‚Æ‚«‚Í•K‚¸DDR‚ğ1‚É‚·‚é‚±‚Æ)
-	 * 5: ‘‚«‚İ—pISP‚Ég—p(MOSI)
-	 * 6: ‘‚«‚İ—pISP‚Ég—p(MISO)
-	 * 7: ‘‚«‚İ—pISP‚Ég—p(SCK)
+	 * 0: Beepå‡ºåŠ›
+	 * 1: æ©™ã‚¹ã‚¤ãƒƒãƒ
+	 * 2: é’ã‚¹ã‚¤ãƒƒãƒ(INT2 å¤–éƒ¨å‰²è¾¼ã¿)
+	 * 3: å³ãƒ¢ãƒ¼ã‚¿ãƒ¼ç”¨PWMå‡ºåŠ›(PWMå‡ºåŠ›ã«ã™ã‚‹ã¨ãã¯å¿…ãšDDRã‚’1ã«ã™ã‚‹ã“ã¨)
+	 * 4: å³ãƒ¢ãƒ¼ã‚¿ãƒ¼ç”¨PWMå‡ºåŠ›(PWMå‡ºåŠ›ã«ã™ã‚‹ã¨ãã¯å¿…ãšDDRã‚’1ã«ã™ã‚‹ã“ã¨)
+	 * 5: æ›¸ãè¾¼ã¿ç”¨ISPã«ä½¿ç”¨(MOSI)
+	 * 6: æ›¸ãè¾¼ã¿ç”¨ISPã«ä½¿ç”¨(MISO)
+	 * 7: æ›¸ãè¾¼ã¿ç”¨ISPã«ä½¿ç”¨(SCK)
 	 *
 	 */
-	DDRB  = 0b00011001;						
+	DDRB  = 0b00011001;
 	PORTB = 0b11100110;
 	
 	/*
 	 *	PORTC
 	 *
-	 * 0: LCD•\¦—p(RS‚ÌØ‚è‘Ö‚¦ 0:ƒRƒ}ƒ“ƒh 1:ƒf[ƒ^)
-	 * 1: LCD•\¦—p(E‚Ìƒtƒ‰ƒOİ’è@‚±‚Ìbit‚ª—§‚¿‚ª‚é‚ÆLCD‚Éƒf[ƒ^‚ª‘—M‚³‚ê‚é)
+	 * 0: LCDè¡¨ç¤ºç”¨(RSã®åˆ‡ã‚Šæ›¿ãˆ 0:ã‚³ãƒãƒ³ãƒ‰ 1:ãƒ‡ãƒ¼ã‚¿)
+	 * 1: LCDè¡¨ç¤ºç”¨(Eã®ãƒ•ãƒ©ã‚°è¨­å®š ã“ã®bitãŒç«‹ã¡ãŒã‚‹ã¨LCDã«ãƒ‡ãƒ¼ã‚¿ãŒé€ä¿¡ã•ã‚Œã‚‹)
 	 * 2:
 	 * 3:
-	 * 4: LCD•\¦—p(ƒf[ƒ^ƒoƒX)
-	 * 5: LCD•\¦—p(ƒf[ƒ^ƒoƒX)
-	 * 6: LCD•\¦—p(ƒf[ƒ^ƒoƒX)
-	 * 7: LCD•\¦—p(ƒf[ƒ^ƒoƒX)
+	 * 4: LCDè¡¨ç¤ºç”¨(ãƒ‡ãƒ¼ã‚¿ãƒã‚¹)
+	 * 5: LCDè¡¨ç¤ºç”¨(ãƒ‡ãƒ¼ã‚¿ãƒã‚¹)
+	 * 6: LCDè¡¨ç¤ºç”¨(ãƒ‡ãƒ¼ã‚¿ãƒã‚¹)
+	 * 7: LCDè¡¨ç¤ºç”¨(ãƒ‡ãƒ¼ã‚¿ãƒã‚¹)
 	 *
 	 */
-	DDRC  = 0b11110011;					
+	DDRC  = 0b11110011;
 	PORTC = 0b00000000;
 	
 	/*
 	 *	PORTD
 	 *
-	 * 0: ¶ƒ[ƒ^ƒŠ[ƒGƒ“ƒR[ƒ_‚Ìƒpƒ‹ƒX”gA‚ğ“ü—Í
-	 * 1: ¶ƒ[ƒ^ƒŠ[ƒGƒ“ƒR[ƒ_‚Ìƒpƒ‹ƒX”gB‚ğ“ü—Í
-	 * 2: ‰Eƒ[ƒ^ƒŠ[ƒGƒ“ƒR[ƒ_‚Ìƒpƒ‹ƒX”gA‚ğ“ü—Í
-	 * 3: ‰Eƒ[ƒ^ƒŠ[ƒGƒ“ƒR[ƒ_‚Ìƒpƒ‹ƒX”gB‚ğ“ü—Í
-	 * 4: 
-	 * 5: 
-	 * 6: ¶ƒ‚[ƒ^[—pPWMo—Í(PWMo—Í‚É‚·‚é‚Æ‚«‚Í•K‚¸DDR‚ğ1‚É‚·‚é‚±‚Æ)
-	 * 7: ¶ƒ‚[ƒ^[—pPWMo—Í(PWMo—Í‚É‚·‚é‚Æ‚«‚Í•K‚¸DDR‚ğ1‚É‚·‚é‚±‚Æ)
+	 * 0: å·¦ãƒ­ãƒ¼ã‚¿ãƒªãƒ¼ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€ã®ãƒ‘ãƒ«ã‚¹æ³¢Aã‚’å…¥åŠ›
+	 * 1: å·¦ãƒ­ãƒ¼ã‚¿ãƒªãƒ¼ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€ã®ãƒ‘ãƒ«ã‚¹æ³¢Bã‚’å…¥åŠ›
+	 * 2: å³ãƒ­ãƒ¼ã‚¿ãƒªãƒ¼ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€ã®ãƒ‘ãƒ«ã‚¹æ³¢Aã‚’å…¥åŠ›
+	 * 3: å³ãƒ­ãƒ¼ã‚¿ãƒªãƒ¼ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€ã®ãƒ‘ãƒ«ã‚¹æ³¢Bã‚’å…¥åŠ›
+	 * 4:
+	 * 5:
+	 * 6: å·¦ãƒ¢ãƒ¼ã‚¿ãƒ¼ç”¨PWMå‡ºåŠ›(PWMå‡ºåŠ›ã«ã™ã‚‹ã¨ãã¯å¿…ãšDDRã‚’1ã«ã™ã‚‹ã“ã¨)
+	 * 7: å·¦ãƒ¢ãƒ¼ã‚¿ãƒ¼ç”¨PWMå‡ºåŠ›(PWMå‡ºåŠ›ã«ã™ã‚‹ã¨ãã¯å¿…ãšDDRã‚’1ã«ã™ã‚‹ã“ã¨)
 	 *
 	 */
 	DDRD  = 0b11000000;
-	PORTD = 0b00001111;			//RE12D‚Íƒvƒ‹ƒAƒbƒv•s—v‚ç‚µ‚¢‚ª”O‚Ì‚½‚ßƒvƒ‹ƒAƒbƒv‚Í—LŒø‚É
+	PORTD = 0b00001111;			//RE12D(ãƒ­ãƒ¼ã‚¿ãƒªãƒ¼ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€ã®åå‰)ã¯
+                          //ãƒ—ãƒ«ã‚¢ãƒƒãƒ—ä¸è¦ã‚‰ã—ã„ãŒå¿µã®ãŸã‚ãƒ—ãƒ«ã‚¢ãƒƒãƒ—ã¯æœ‰åŠ¹ã«
 	
-	//LCD‰Šú‰»
+	//LCDåˆæœŸåŒ–
 	lcd_init();
 	
-	//ƒ^ƒCƒ}ƒŒƒWƒXƒ^İ’è(0:‰Eƒ‚[ƒ^[PWM 1:ƒZƒ“ƒT—p 2:¶ƒ‚[ƒ^[PWM 3:ƒGƒ“ƒR[ƒ_“Ç‚İæ‚è{p¨§Œä) 
-	Inti_Timer0();
-	Inti_Timer2();
-	Inti_Timer1();
-	Inti_Timer3();
+	//ã‚¿ã‚¤ãƒãƒ¬ã‚¸ã‚¹ã‚¿è¨­å®š
+  //0:å³ãƒ¢ãƒ¼ã‚¿ãƒ¼PWM
+	Init_Timer0();
+  //2:å·¦ãƒ¢ãƒ¼ã‚¿ãƒ¼PWM
+	Init_Timer2();
+  //1:ã‚»ãƒ³ã‚µç”¨
+	Init_Timer1();
+  //3:ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€èª­ã¿å–ã‚Š+å§¿å‹¢åˆ¶å¾¡
+	Init_Timer3();
 	
-	//AD•ÏŠ·ƒŒƒWƒXƒ^İ’è
+	//ADå¤‰æ›ãƒ¬ã‚¸ã‚¹ã‚¿è¨­å®š
+	loop_until_bit_is_clear(PINB,PINB2);		//ã‚¹ã‚¿ãƒ¼ãƒˆã‚¹ã‚¤ãƒƒãƒ(é’è‰²)ãŒæŠ¼ã•ã‚Œã‚‹ã¾ã§å¾…æ©Ÿ
 	
-	loop_until_bit_is_clear(PINB,PINB2);		//ƒXƒ^[ƒgƒXƒCƒbƒ`(ÂF)‚ª‰Ÿ‚³‚ê‚é‚Ü‚Å‘Ò‹@
-	beep();										//ƒuƒU[‚ğ–Â‚ç‚·
+	beep();										//ãƒ–ã‚¶ãƒ¼ã‚’é³´ã‚‰ã™
 	
-	sei();		//Š„‚è‚İ‹–‰Â
+	sei();		//å‰²ã‚Šè¾¼ã¿è¨±å¯
 	
 	while(1){
-		
 		print_all_sensor();
 		//print_RotaryEncorder();
 		//Print_ADC();
 		//switch_test();
-	
 	}
 
 	return 0;
@@ -333,57 +305,38 @@ void encoder(void)
 	m = dir_left[left & 15];
 	n = dir_right[right & 15];
 	
-	
 	Left_RotaryEncorder_val  += m;	
 	Right_RotaryEncorder_val += n;
-
 }
 
-//ŠeƒZƒ“ƒT‚Ì’l‚Æƒ[ƒ^ƒŠ[ƒGƒ“ƒR[ƒ_‚ÌƒJƒEƒ“ƒg”‚ğ“¯‚ÉLCD‚É•\¦
+//å„ã‚»ãƒ³ã‚µã®å€¤ã¨ãƒ­ãƒ¼ã‚¿ãƒªãƒ¼ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€ã®ã‚«ã‚¦ãƒ³ãƒˆæ•°ã‚’åŒæ™‚ã«LCDã«è¡¨ç¤º
 void print_all_sensor(void)
 {
 	S_digit_partition();
 	E_digit_partition();
 	
 	lcd_pos(0,0);
-	lcd_data(0x30 + E_Left.dig10000);
-	lcd_data(0x30 + E_Left.dig1000);
-	lcd_data(0x30 + E_Left.dig100);
-	lcd_data(0x30 + E_Left.dig10);
-	lcd_data(0x30 + E_Left.dig1);
+  lcd_number(Left_RotaryEncorder_val, 5);
 	
 	lcd_pos(0,6);
-	lcd_data(0x30 + E_Right.dig10000);
-	lcd_data(0x30 + E_Right.dig1000);
-	lcd_data(0x30 + E_Right.dig100);
-	lcd_data(0x30 + E_Right.dig10);
-	lcd_data(0x30 + E_Right.dig1);
-	
+  lcd_number(Right_RotaryEncorder_val, 5);
+
 	lcd_pos(1,0);
-	lcd_data(0x30 + S_RightFront.dig100);
-	lcd_data(0x30 + S_RightFront.dig10);
-	lcd_data(0x30 + S_RightFront.dig1);
+  lcd_number(RightFront_Sensor_val, 3);
 	
 	lcd_pos(1,4);
-	lcd_data(0x30 + S_LeftFront.dig100);
-	lcd_data(0x30 + S_LeftFront.dig10);
-	lcd_data(0x30 + S_LeftFront.dig1);
+  lcd_number(LeftFront_Sensor_val, 3);
 	
 	lcd_pos(1,8);
-	lcd_data(0x30 + S_Left.dig100);
-	lcd_data(0x30 + S_Left.dig10);
-	lcd_data(0x30 + S_Left.dig1);
+  lcd_number(Left_Sensor_val, 3);
 	
 	lcd_pos(1,12);
-	lcd_data(0x30 + S_Right.dig100);
-	lcd_data(0x30 + S_Right.dig10);
-	lcd_data(0x30 + S_Right.dig1);
+  lcd_number(Right_Sensor_val, 3);
 	
 	lcd_pos(0,0);
-	
 }
 
-//ŠeƒZƒ“ƒT‚Ì’l‚ğLCD‚É•\¦
+//å„ã‚»ãƒ³ã‚µã®å€¤ã‚’LCDã«è¡¨ç¤º
 void Print_ADC(void)
 {
 	S_digit_partition();
@@ -391,52 +344,18 @@ void Print_ADC(void)
 	lcd_str("RF  LF  L   R");
 	
 	lcd_pos(1,0);
-	lcd_data(0x30 + S_RightFront.dig100);
-	lcd_data(0x30 + S_RightFront.dig10);
-	lcd_data(0x30 + S_RightFront.dig1);
+  lcd_number(RightFront_Sensor_val, 3);
 	
 	lcd_pos(1,4);
-	lcd_data(0x30 + S_LeftFront.dig100);
-	lcd_data(0x30 + S_LeftFront.dig10);
-	lcd_data(0x30 + S_LeftFront.dig1);
+  lcd_number(LeftFront_Sensor_val, 3);
 	
 	lcd_pos(1,8);
-	lcd_data(0x30 + S_Left.dig100);
-	lcd_data(0x30 + S_Left.dig10);
-	lcd_data(0x30 + S_Left.dig1);
+  lcd_number(Left_Sensor_val, 3);
 	
 	lcd_pos(1,12);
-	lcd_data(0x30 + S_Right.dig100);
-	lcd_data(0x30 + S_Right.dig10);
-	lcd_data(0x30 + S_Right.dig1);
+  lcd_number(Right_Sensor_val, 3);
 	
 	lcd_pos(0,0);
-
-}
-
-//ƒZƒ“ƒT’l‚ÌŒ…‚ğ‚í‚¯‚é(LCD‚Ì•¶š—ñ•\¦‚Ì‚½‚ß) 
-void S_digit_partition(void)
-{	
-	//‘O(¶‘¤‚Ì)
-	S_Left.dig1			=  Left_Sensor_val % 10;
-	S_Left.dig10		= (Left_Sensor_val / 10) % 10;
-	S_Left.dig100		= (Left_Sensor_val / 100) % 10; 
-
-	//¶‚ÌƒZƒ“ƒT
-	S_LeftFront.dig1    =  LeftFront_Sensor_val % 10;
-	S_LeftFront.dig10   = (LeftFront_Sensor_val / 10) % 10;
-	S_LeftFront.dig100	= (LeftFront_Sensor_val/ 100) % 10;
-
-	//‰E‚ÌƒZƒ“ƒT
-	S_RightFront.dig1   =  RightFront_Sensor_val % 10;
-	S_RightFront.dig10  = (RightFront_Sensor_val / 10) % 10;
-	S_RightFront.dig100 = (RightFront_Sensor_val / 100) % 10;
-
-	//‘O(‰E‘¤)
-	S_Right.dig1		=  Right_Sensor_val % 10;
-	S_Right.dig10		= (Right_Sensor_val / 10) % 10;
-	S_Right.dig100		= (Right_Sensor_val / 100) % 10;
-
 }
 
 void print_RotaryEncorder(void)
@@ -446,39 +365,12 @@ void print_RotaryEncorder(void)
 	lcd_str("rotary encorder");
 	
 	lcd_pos(1,0);
-	lcd_data(0x30 + E_Left.dig10000);
-	lcd_data(0x30 + E_Left.dig1000);
-	lcd_data(0x30 + E_Left.dig100);
-	lcd_data(0x30 + E_Left.dig10);
-	lcd_data(0x30 + E_Left.dig1);
+  lcd_number(Left_RotaryEncorder_val, 5);
 	
 	lcd_pos(1,6);
-	lcd_data(0x30 + E_Right.dig10000);
-	lcd_data(0x30 + E_Right.dig1000);
-	lcd_data(0x30 + E_Right.dig100);
-	lcd_data(0x30 + E_Right.dig10);
-	lcd_data(0x30 + E_Right.dig1);
+  lcd_number(Right_RotaryEncorder_val, 5);
 	
 	lcd_pos(0,0);
-	
-}
-
-void E_digit_partition(void)
-{
-	//¶
-	E_Left.dig1			=  Left_RotaryEncorder_val % 10;
-	E_Left.dig10		= (Left_RotaryEncorder_val / 10) % 10;
-	E_Left.dig100		= (Left_RotaryEncorder_val / 100) % 10;
-	E_Left.dig1000		= (Left_RotaryEncorder_val / 1000) % 10;
-	E_Left.dig10000		= (Left_RotaryEncorder_val / 10000) % 10;
-	
-	//‰E
-	E_Right.dig1		=  Right_RotaryEncorder_val % 10;
-	E_Right.dig10		= (Right_RotaryEncorder_val / 10) % 10;
-	E_Right.dig100		= (Right_RotaryEncorder_val / 100) % 10;
-	E_Right.dig1000		= (Right_RotaryEncorder_val / 1000) % 10;
-	E_Right.dig10000	= (Right_RotaryEncorder_val / 10000) % 10;
-	
 }
 
 void switch_test(void)
@@ -500,176 +392,173 @@ void switch_test(void)
 		lcd_str("press the button");
 		lcd_pos(0,0);
 	}
-	
 }
 
 /*
- *	Function Name : Inti_Timer1
- *	Tittle        : ƒ^ƒCƒ}[1‚ÌƒŒƒWƒXƒ^İ’è
- *	Input		  :	‚È‚µ
- *	output        :	‚È‚µ
- *	Descripution  : CTC‚ğg‚Á‚ÄèŒy‚ÉƒJƒEƒ“ƒg‚·‚é
- *					ISR(TIMER1_COMPA_vect)
+ *	Function Name : Init_Timer1
+ *	Tittle        : ã‚¿ã‚¤ãƒãƒ¼1ã®ãƒ¬ã‚¸ã‚¹ã‚¿è¨­å®š
+ *	Input		      :	ãªã—
+ *	Output        :	ãªã—
+ *	Descripution  : CTCã‚’ä½¿ã£ã¦æ‰‹è»½ã«ã‚«ã‚¦ãƒ³ãƒˆã™ã‚‹
+ *					        ISR(TIMER1_COMPA_vect)
  */
- 
-void Inti_Timer1(void)
+void Init_Timer1(void)
 {
 	//TCCR1A(Timer Counter1 Control Register A)
-	//	7,6: OC1A‚©‚ço—Í‚·‚éPWM”g‚Ìİ’è
-	//       ‰½‚ào—Í‚µ‚È‚¢‚Ì‚Å
-	//		 #7 = 0, #6 = 0
+	//	7,6: OC1Aã‹ã‚‰å‡ºåŠ›ã™ã‚‹PWMæ³¢ã®è¨­å®š
+	//       COM1A1=0, COM1A0=0ã§æ¨™æº–ãƒãƒ¼ãƒˆå‹•ä½œ (ãƒ‡ãƒ¼ã‚¿ã‚·ãƒ¼ãƒˆ p.83, è¡¨16-2)
+	//		   #7 = 0, #6 = 0
 	//
-	//	5,4: OC1B‚©‚ço—Í‚·‚éPWM”g‚Ìİ’è
-	//       ‰½‚ào—Í‚µ‚È‚¢‚Ì‚Å
+	//	5,4: OC1Bã‹ã‚‰å‡ºåŠ›ã™ã‚‹PWMæ³¢ã®è¨­å®š
+	//       COM1B1=0, COM1B0=0ã§æ¨™æº–ãƒãƒ¼ãƒˆå‹•ä½œ (ãƒ‡ãƒ¼ã‚¿ã‚·ãƒ¼ãƒˆ p.83, è¡¨16-2)
 	//       #5 = 0, #4 = 0
 	//
-	//	3,2: ƒŠƒU[ƒuƒrƒbƒg
+	//	3,2: ãƒªã‚¶ãƒ¼ãƒ–ãƒ“ãƒƒãƒˆ
 	//       #3 = 0, #2 = 0
 	//
-	//	1,0: PWM”gŒ`‚Ìí—Ş‚Ìİ’è(‰º‹L‚ÌTCCR1B‚É‚àİ’è‚ªŒ×‚Á‚Ä‚¢‚é‚Ì‚Å’ˆÓ)
-	//		 CTCƒ‚[ƒh
+	//	1,0: PWMæ³¢å½¢ã®ç¨®é¡ã®è¨­å®š(ä¸‹è¨˜ã®TCCR1Bã«ã‚‚è¨­å®šãŒè·¨ã£ã¦ã„ã‚‹ã®ã§æ³¨æ„)
+	//		   WGM13=0, WGM12=1, WGM11=0, WGM10=0ã§CTCãƒ¢ãƒ¼ãƒ‰(ãƒ‡ãƒ¼ã‚¿ã‚·ãƒ¼ãƒˆ p.84, è¡¨16-5ã®ç•ªå·4)
 	//       #1 = 0, #0 = 0
+  // TODO è¨­å®šãŒé–“é•ã£ã¦ã„ã‚‹ã®ã«ä½•æ•…ã‹å‹•ã
 	TCCR1A = 0b00000010;
 	
 	//TCCR1B(Timer Counter1 Control register B)
-	//	7,6: OC1A,OC1B ‹­§•ÏXİ’è
-	//		 ‚±‚ê‚Í”ñPWMƒ‚[ƒh‚ğg—p‚·‚éÛ‚Éİ’è‚·‚é@¡‰ñ‚Íg—p‚µ‚È‚¢
-	//		 #7 = 0, #6 = 0
+	//	7,6: ICNC1, ICES1 æ•ç²æ©Ÿé“å…¥åŠ›ã¨ã„ã†è¬ã®æ©Ÿèƒ½ (ãƒ‡ãƒ¼ã‚¿ã‚·ãƒ¼ãƒˆ p.82)
+	//		   ä»Šå›ã¯ä½¿ç”¨ã—ãªã„
+	//		   #7 = 0, #6 = 0
 	//
-	//	5,4: ƒŠƒU[ƒuƒrƒbƒg
-	//		 #5 = 0, #4 = 0
+	//	5: ãƒªã‚¶ãƒ¼ãƒ–ãƒ“ãƒƒãƒˆ
+	//		 #5 = 0
 	//
-	//	3  : PWM”gŒ`‚Ìí—Ş‚Ìİ’è(ã‹L‚Éq‚×‚½İ’è‚Ìc‚è)
-	//       #3 = 0
+	//	4,3: PWMæ³¢å½¢ã®ç¨®é¡ã®è¨­å®š(ä¸Šè¨˜ã«è¿°ã¹ãŸè¨­å®šã®æ®‹ã‚Š)
+	//       #4 = 0, #3 = 1
 	//
-	//	2,1,0: •ªüŠíİ’è
-	//         ATmega1284P-AU‚Ì“®ìƒNƒƒbƒN‚Í20MHz(ƒqƒ…[ƒYƒrƒbƒg‚Å•ªüİ’è‚ğ‰ğœŒã)
-	//         •ªü‚Í1/1024
-	//         20MHz/1024 ==> –ñ20kHz
+	//	2,1,0: åˆ†å‘¨å™¨è¨­å®š
+	//         ATmega1284P-AUã®å‹•ä½œã‚¯ãƒ­ãƒƒã‚¯ã¯20MHz(ãƒ’ãƒ¥ãƒ¼ã‚ºãƒ“ãƒƒãƒˆã§åˆ†å‘¨è¨­å®šã‚’è§£é™¤å¾Œ)
+	//         åˆ†å‘¨ã¯1/1024
+	//         20MHz/1024 ==> ç´„20kHz
 	//         #2 = 1, #1 = 0, #0 = 1
+  // TODO è¨­å®šãŒé–“é•ã£ã¦ã„ã‚‹ã®ã«ä½•æ•…ã‹å‹•ã
 	TCCR1B = 0b00000101;
 	
 	//TCNT1(Timer Counter1)
-	//		ƒ^ƒCƒ}ƒJƒEƒ“ƒ^(16bit)‚É’¼ÚƒAƒNƒZƒX‚Å‚«‚é
-	//		‰Šú’l‚ğ‚¢‚ê‚é
+	//		ã‚¿ã‚¤ãƒã‚«ã‚¦ãƒ³ã‚¿(16bit)ã«ç›´æ¥ã‚¢ã‚¯ã‚»ã‚¹ã§ãã‚‹
+	//		åˆæœŸå€¤ã‚’ã„ã‚Œã‚‹
 	TCNT1 = 0;
 	
-	
 	//OCR1A(Timer Counter1 Output Compare A Register)
-	//      ‚¢‚ÂƒRƒ“ƒyƒAƒ}ƒbƒ`A‚ğ‚³‚¹‚é‚©‚ğİ’è‚·‚é(16bit)
+	//      ã„ã¤ã‚³ãƒ³ãƒšã‚¢ãƒãƒƒãƒAã‚’ã•ã›ã‚‹ã‹ã‚’è¨­å®šã™ã‚‹(16bit)
 	//
-	//		ƒf[ƒ^ƒV[ƒg‚ÌAD•ÏŠ·‚Ì‚Æ‚±‚ë‚ğŒ©‚é‚ÆA
-	//		•ÏŠ·ŠÔ‚Í13-260us(50k-1MHz)‚Æ‘‚¢‚Ä‚ ‚éB
-	//		¡‰ñAD•ÏŠ·‚Ì“®ìƒNƒƒbƒN‚Í156kHz‚È‚Ì‚ÅüŒ`‚É„ˆÚ‚·‚é‚Æ‰¼’è‚·‚é‚Æ–ñ240us‚É‚È‚éB
+	//		ãƒ‡ãƒ¼ã‚¿ã‚·ãƒ¼ãƒˆã®ADå¤‰æ›ã®ã¨ã“ã‚ã‚’è¦‹ã‚‹ã¨ã€
+	//		å¤‰æ›æ™‚é–“ã¯13-260us(50k-1MHz)ã¨æ›¸ã„ã¦ã‚ã‚‹ã€‚
+	//		ä»Šå›ADå¤‰æ›ã®å‹•ä½œã‚¯ãƒ­ãƒƒã‚¯ã¯156kHzãªã®ã§ç·šå½¢ã«æ¨ç§»ã™ã‚‹ã¨ä»®å®šã™ã‚‹ã¨ç´„240usã«ãªã‚‹ã€‚
 	//
-	//		AD•ÏŠ·ŠÔ‚Í–ñ240us ‚Ü‚½ƒ}ƒ‹ƒ`ƒvƒŒƒNƒT‚ÌØ‚è‘Ö‚¦ŠÔ‚É100us‚¢‚ê‚Ä‚¢‚éB
-	//		‚»‚ê‚ğ4‰ñŒJ‚è‚©‚¦‚è‚µ‚Ä‚¢‚é‚Ì‚ÅA
-	//		(240+100)*4 = 1360us ‚±‚±‚Å‚Í1360us‚Æ‚·‚éB
+	//		ADå¤‰æ›æ™‚é–“ã¯ç´„240us ã¾ãŸãƒãƒ«ãƒãƒ—ãƒ¬ã‚¯ã‚µã®åˆ‡ã‚Šæ›¿ãˆæ™‚é–“ã«100usã„ã‚Œã¦ã„ã‚‹ã€‚
+	//		ãã‚Œã‚’4å›ç¹°ã‚Šã‹ãˆã‚Šã—ã¦ã„ã‚‹ã®ã§ã€
+	//		(240+100)*4 = 1360us ã“ã“ã§ã¯1360usã¨ã™ã‚‹ã€‚
 	//
-	//		AD•ÏŠ·‚ªŠ®—¹‚·‚é‘O‚ÉŠ„‚è‚ñ‚Å‚àˆÓ–¡‚ª‚È‚¢‚Ì‚ÅAŠ„‚è‚İŠÔŠu‚ÍusˆÈã‚É‚·‚é•K—v‚ª‚ ‚éB
+	//		ADå¤‰æ›ãŒå®Œäº†ã™ã‚‹å‰ã«å‰²ã‚Šè¾¼ã‚“ã§ã‚‚æ„å‘³ãŒãªã„ã®ã§ã€å‰²ã‚Šè¾¼ã¿é–“éš”ã¯1360usä»¥ä¸Šã«ã™ã‚‹å¿…è¦ãŒã‚ã‚‹ã€‚
 	//
-	//      1ƒNƒƒbƒN‚Í20kHz(50us)‚Éİ’è‚µ‚Ä‚¢‚é‚Ì‚ÅA
-	//		3000us/50us = 60‚Æ‚È‚éB
+	//    1ã‚¯ãƒ­ãƒƒã‚¯ã¯20kHz(50us)ã«è¨­å®šã—ã¦ã„ã‚‹ã®ã§ã€
+	//		3000us/50us = 60ã¨ãªã‚‹ã€‚
 	//
 	OCR1A = 1500;
 	
 	//OCR1B(Timer Counter1 Output Compare B Register)
-	//		‚¢‚ÂƒRƒ“ƒyƒAƒ}ƒbƒ`B‚ğ‚³‚¹‚é‚©‚ğİ’è‚·‚é(16bit)
-	//		¡‰ñ‚Íg—p‚µ‚È‚¢B
+	//		ã„ã¤ã‚³ãƒ³ãƒšã‚¢ãƒãƒƒãƒBã‚’ã•ã›ã‚‹ã‹ã‚’è¨­å®šã™ã‚‹(16bit)
+	//		ä»Šå›ã¯ä½¿ç”¨ã—ãªã„ã€‚
 	OCR1B = 0;
 
 	//TIMSK1(Timer Counter 1 Interrupt Mask Register)
-	//		ƒ^ƒCƒ}Š„‚è‚İ‚ğ‹–‰Â‚·‚é‚½‚ß‚ÌƒŒƒWƒXƒ^
-	//	7,6,5,4,3: ƒŠƒU[ƒuƒrƒbƒg
-	//		#7-3 = 0
+	//		ã‚¿ã‚¤ãƒå‰²ã‚Šè¾¼ã¿ã‚’è¨±å¯ã™ã‚‹ãŸã‚ã®ãƒ¬ã‚¸ã‚¹ã‚¿
+	//	7,6,5,4,3: ãƒªã‚¶ãƒ¼ãƒ–ãƒ“ãƒƒãƒˆ
+	//		         #7-3 = 0
 	//
-	//  2 : B”äŠr‚Ì‹–‰Â
-	//		g—p‚µ‚È‚¢‚Ì‚Å
-	//		#2 = 0
+	//  2 : Bæ¯”è¼ƒã®è¨±å¯
+	//		  ä½¿ç”¨ã—ãªã„ã®ã§
+	//		  #2 = 0
 	//
-	//  1 : A”äŠr‚Ì‹–‰Â
-	//		g—p‚·‚é‚Ì‚Å
-	//		#1 = 1
+	//  1 : Aæ¯”è¼ƒã®è¨±å¯
+	//		  ä½¿ç”¨ã™ã‚‹ã®ã§
+	//		  #1 = 1
 	//
-	//	0 : ˜R‚êŠ„‚è‚İ‹–‰Â
-	//		g—p‚µ‚È‚¢‚Ì‚Å
-	//		#0 = 0
+	//	0 : æ¼ã‚Œå‰²ã‚Šè¾¼ã¿è¨±å¯
+	//		  ä½¿ç”¨ã—ãªã„ã®ã§
+	//		  #0 = 0
 	TIMSK1 = 0b00000010;
-
 }
 
-void Inti_Timer3(void)
+void Init_Timer3(void)
 {
 	//TCCR3A(Timer Counter3 Control Register A)
-	//	7,6: OC3A‚©‚ço—Í‚·‚éPWM”g‚Ìİ’è
-	//       ‰½‚ào—Í‚µ‚È‚¢‚Ì‚Å
-	//			#7 = 0, #6 = 0
+	//	7,6: OC3Aã‹ã‚‰å‡ºåŠ›ã™ã‚‹PWMæ³¢ã®è¨­å®š
+	//       COM3A1=0, COM3A0=0ã§æ¨™æº–ãƒãƒ¼ãƒˆå‹•ä½œ (ãƒ‡ãƒ¼ã‚¿ã‚·ãƒ¼ãƒˆ p.83, è¡¨16-2)
+	//		   #7 = 0, #6 = 0
 	//
-	//	5,4: OC3B‚©‚ço—Í‚·‚éPWM”g‚Ìİ’è
-	//       ‰½‚ào—Í‚µ‚È‚¢‚Ì‚Å
-	//			#5 = 0, #4 = 0
+	//	5,4: OC3Bã‹ã‚‰å‡ºåŠ›ã™ã‚‹PWMæ³¢ã®è¨­å®š
+	//       COM3B1=0, COM3B0=0ã§æ¨™æº–ãƒãƒ¼ãƒˆå‹•ä½œ (ãƒ‡ãƒ¼ã‚¿ã‚·ãƒ¼ãƒˆ p.83, è¡¨16-2)
+	//       #5 = 0, #4 = 0
 	//
-	//	3,2: ƒŠƒU[ƒuƒrƒbƒg
-	//			#3 = 0, #2 = 0
+	//	3,2: ãƒªã‚¶ãƒ¼ãƒ–ãƒ“ãƒƒãƒˆ
+	//			 #3 = 0, #2 = 0
 	//
-	//	1,0: PWM”gŒ`‚Ìí—Ş‚Ìİ’è(‰º‹L‚ÌTCCR3B‚É‚àİ’è‚ªŒ×‚Á‚Ä‚¢‚é‚Ì‚Å’ˆÓ)
-	//			CTCƒ‚[ƒh
-	//			#1 = 1, #0 = 0
-	TCCR3A = 0b00000010;
+	//	1,0: PWMæ³¢å½¢ã®ç¨®é¡ã®è¨­å®š(ä¸‹è¨˜ã®TCCR3Bã«ã‚‚è¨­å®šãŒè·¨ã£ã¦ã„ã‚‹ã®ã§æ³¨æ„)
+	//		   WGM33=0, WGM32=1, WGM31=0, WGM30=0ã§CTCãƒ¢ãƒ¼ãƒ‰(ãƒ‡ãƒ¼ã‚¿ã‚·ãƒ¼ãƒˆ p.84, è¡¨16-5ã®ç•ªå·4)
+	//			#1 = 0, #0 = 0
+	TCCR3A = 0b00000000;
 	
 	//TCCR3B(Timer Counter3 Control register B)
-	//	7,6: OC1A,OC1B ‹­§•ÏXİ’è
-	//		 ‚±‚ê‚Í”ñPWMƒ‚[ƒh‚ğg—p‚·‚éÛ‚Éİ’è‚·‚é@¡‰ñ‚Íg—p‚µ‚È‚¢
-	//			#7 = 0, #6 = 0
+	//	7,6: ICNC3, ICES3 æ•ç²æ©Ÿé“å…¥åŠ›ã¨ã„ã†è¬ã®æ©Ÿèƒ½ (ãƒ‡ãƒ¼ã‚¿ã‚·ãƒ¼ãƒˆ p.82)
+	//		   ä»Šå›ã¯ä½¿ç”¨ã—ãªã„
+	//		   #7 = 0, #6 = 0
 	//
-	//	5,4: ƒŠƒU[ƒuƒrƒbƒg
-	//			#5 = 0, #4 = 0
+	//	5: ãƒªã‚¶ãƒ¼ãƒ–ãƒ“ãƒƒãƒˆ
+	//		 #4 = 0
 	//
-	//	3  : PWM”gŒ`‚Ìí—Ş‚Ìİ’è(ã‹L‚Éq‚×‚½İ’è‚Ìc‚è)
-	//			#3 = 0
+	//	4,3: PWMæ³¢å½¢ã®ç¨®é¡ã®è¨­å®š(ä¸Šè¨˜ã«è¿°ã¹ãŸè¨­å®šã®æ®‹ã‚Š)
+	//       #4 = 0, #3 = 1
 	//
-	//	2,1,0: •ªüŠíİ’è
-	//			ATmega1284P-AU‚Ì“®ìƒNƒƒbƒN‚Í20MHz(ƒqƒ…[ƒYƒrƒbƒg‚Å•ªüİ’è‚ğ‰ğœŒã)
-	//			ƒ[ƒ^ƒŠ[ƒGƒ“ƒR[ƒ_‚Ì‰ñ“]‚ğ“Ç‚Ş‚Ì‚ÅAƒJƒEƒ“ƒgƒŒ[ƒg‚ªƒTƒ“ƒvƒŠƒ“ƒOü”g”‚æ‚è‚àA
-	//			‘å‚«‚­‚È‚Á‚Ä‚Í‚¢‚¯‚È‚¢‚Ì‚Å¡‰ñ‚ÌƒTƒ“ƒvƒŠƒ“ƒOü”g”‚Í100kHz(10us)‚Æ‚·‚é
-	//			20MHz/64 ==> –ñ312.5kHz(3.2us)
+	//	2,1,0: åˆ†å‘¨å™¨è¨­å®š (ãƒ‡ãƒ¼ã‚¿ã‚·ãƒ¼ãƒˆp.85, è¡¨16-6)
+	//			ATmega1284P-AUã®å‹•ä½œã‚¯ãƒ­ãƒƒã‚¯ã¯20MHz(ãƒ’ãƒ¥ãƒ¼ã‚ºãƒ“ãƒƒãƒˆã§åˆ†å‘¨è¨­å®šã‚’è§£é™¤å¾Œ)
+	//			ãƒ­ãƒ¼ã‚¿ãƒªãƒ¼ã‚¨ãƒ³ã‚³ãƒ¼ãƒ€ã®å›è»¢ã‚’èª­ã‚€ã®ã§ã€ã‚«ã‚¦ãƒ³ãƒˆãƒ¬ãƒ¼ãƒˆãŒã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°å‘¨æ³¢æ•°ã‚ˆã‚Šã‚‚ã€
+	//			å¤§ãããªã£ã¦ã¯ã„ã‘ãªã„ã®ã§ä»Šå›ã®ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°å‘¨æ³¢æ•°ã¯100kHz(10us)ã¨ã™ã‚‹
+	//			20MHz/64 ==> ç´„312.5kHz(3.2us)
 	//			#2 = 0, #1 = 1, #0 = 1
+  // TODO è¨­å®šãŒé–“é•ã£ã¦ã„ã‚‹ã®ã«ä½•æ•…ã‹å‹•ã
 	TCCR3B = 0b00000010;
 	
 	//TCNT3(Timer Counter3)
-	//			ƒ^ƒCƒ}ƒJƒEƒ“ƒ^(16bit)‚É’¼ÚƒAƒNƒZƒX‚Å‚«‚é
-	//			‰Šú’l‚ğ‚¢‚ê‚é
+	//			ã‚¿ã‚¤ãƒã‚«ã‚¦ãƒ³ã‚¿(16bit)ã«ç›´æ¥ã‚¢ã‚¯ã‚»ã‚¹ã§ãã‚‹
+	//			åˆæœŸå€¤ã‚’ã„ã‚Œã‚‹
 	TCNT3 = 0;
 	
-	
 	//OCR3A(Timer Counter3 Output Compare A Register)
-	//			‚¢‚ÂƒRƒ“ƒyƒAƒ}ƒbƒ`A‚ğ‚³‚¹‚é‚©‚ğİ’è‚·‚é(16bit)
-	//			ƒTƒ“ƒvƒŠƒ“ƒOü”g”‚ğ100kHz(10us)‚É‚µ‚½‚¢‚Ì‚Å
-	//			10/3.2 = 3.125 ‚±‚±‚Å‚Í–ñ4‚Æ‚·‚é
-	//			
+	//			ã„ã¤ã‚³ãƒ³ãƒšã‚¢ãƒãƒƒãƒAã‚’ã•ã›ã‚‹ã‹ã‚’è¨­å®šã™ã‚‹(16bit)
+	//			ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°å‘¨æ³¢æ•°ã‚’100kHz(10us)ã«ã—ãŸã„ã®ã§
+	//			10/3.2 = 3.125 ã“ã“ã§ã¯ç´„4ã¨ã™ã‚‹
 	OCR3A = 10;
 	
 	//OCR3B(Timer Counter3 Output Compare B Register)
-	//			‚¢‚ÂƒRƒ“ƒyƒAƒ}ƒbƒ`B‚ğ‚³‚¹‚é‚©‚ğİ’è‚·‚é(16bit)
-	//			¡‰ñ‚Íg—p‚µ‚È‚¢B
+	//			ã„ã¤ã‚³ãƒ³ãƒšã‚¢ãƒãƒƒãƒBã‚’ã•ã›ã‚‹ã‹ã‚’è¨­å®šã™ã‚‹(16bit)
+	//			ä»Šå›ã¯ä½¿ç”¨ã—ãªã„ã€‚
 	OCR3B = 0;
 
 	//TIMSK3(Timer Counter 3 Interrupt Mask Register)
-	//		ƒ^ƒCƒ}Š„‚è‚İ‚ğ‹–‰Â‚·‚é‚½‚ß‚ÌƒŒƒWƒXƒ^
-	//	7,6,5,4,3: ƒŠƒU[ƒuƒrƒbƒg
-	//		#7-3 = 0
+	//		ã‚¿ã‚¤ãƒå‰²ã‚Šè¾¼ã¿ã‚’è¨±å¯ã™ã‚‹ãŸã‚ã®ãƒ¬ã‚¸ã‚¹ã‚¿
+	//	7,6,5,4,3: ãƒªã‚¶ãƒ¼ãƒ–ãƒ“ãƒƒãƒˆ
+	//		         #7-3 = 0
 	//
-	//  2 : B”äŠr‚Ì‹–‰Â
-	//		g—p‚µ‚È‚¢‚Ì‚Å
-	//		#2 = 0
+	//  2 : Bæ¯”è¼ƒã®è¨±å¯
+	//		  ä½¿ç”¨ã—ãªã„ã®ã§
+	//		  #2 = 0
 	//
-	//  1 : A”äŠr‚Ì‹–‰Â
-	//		g—p‚·‚é‚Ì‚Å
-	//		#1 = 1
+	//  1 : Aæ¯”è¼ƒã®è¨±å¯
+	//		  ä½¿ç”¨ã™ã‚‹ã®ã§
+	//		  #1 = 1
 	//
-	//	0 : ˜R‚êŠ„‚è‚İ‹–‰Â
-	//		g—p‚µ‚È‚¢‚Ì‚Å
-	//		#0 = 0
+	//	0 : æ¼ã‚Œå‰²ã‚Šè¾¼ã¿è¨±å¯
+	//		  ä½¿ç”¨ã—ãªã„ã®ã§
+	//		  #0 = 0
 	TIMSK3 = 0b00000010;
-
 }
+// vim: noet ts=4 sw=4 sts=0

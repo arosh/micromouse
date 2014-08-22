@@ -3,17 +3,15 @@
  *
  * Created: 2014/04/22 14:38:09
  *  Author: takemichi
- */ 
-
+ */
 
 #ifndef AVR_ADC_H_
 #define AVR_ADC_H_
 
-//ACD‚ÌƒŒƒWƒXƒ^İ’è
+//ACDã®ãƒ¬ã‚¸ã‚¹ã‚¿è¨­å®š
 void Init_ADC(void);
 
-//AD•ÏŠ·‚Ìch‚ğØ‚è‘Ö‚¦‚Ä’l‚ğæ“¾‚µ‚Ä‚¢‚­ŠÖ”
-void Inti_ADC_get(void);
-
+//ADå¤‰æ›ã®chã‚’åˆ‡ã‚Šæ›¿ãˆã¦å€¤ã‚’å–å¾—ã—ã¦ã„ãé–¢æ•°
+void Init_ADC_get(void);
 
 #endif /* AVR_ADC_H_ */

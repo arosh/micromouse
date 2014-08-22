@@ -3,32 +3,32 @@
  *
  * Created: 2014/04/18 20:21:16
  *  Author: UEKI
- */ 
+ */
 
 
 #ifndef AVR_MOTER_H_
 #define AVR_MOTER_H_
 
-//ˆø”‚ª³‚Å‚ ‚ê‚Î‘Oi•ûŒü‚É‰ñ“],•‰‚Å‚ ‚ê‚ÎŒãi•ûŒü‚É‰ñ“]
+//å¼•æ•°ãŒæ­£ã§ã‚ã‚Œã°å‰é€²æ–¹å‘ã«å›è»¢,è² ã§ã‚ã‚Œã°å¾Œé€²æ–¹å‘ã«å›è»¢
 void moter_right(int x);
 
-//ˆø”‚ª³‚Å‚ ‚ê‚Î‘Oi•ûŒü‚É‰ñ“],•‰‚Å‚ ‚ê‚ÎŒãi•ûŒü‚É‰ñ“]
+//å¼•æ•°ãŒæ­£ã§ã‚ã‚Œã°å‰é€²æ–¹å‘ã«å›è»¢,è² ã§ã‚ã‚Œã°å¾Œé€²æ–¹å‘ã«å›è»¢
 void moter_left(int x);
-	
-//ƒ^ƒCƒ}[0‚ÌƒŒƒWƒXƒ^İ’è(8bit‚‘¬PWMƒ‚[ƒh)
-void Inti_Timer0(void);
 
-//ƒ^ƒCƒ}[2‚ÌƒŒƒWƒXƒ^İ’è(8bit‚‘¬PWMƒ‚[ƒh)
-void Inti_Timer2(void);
+//ã‚¿ã‚¤ãƒãƒ¼0ã®ãƒ¬ã‚¸ã‚¹ã‚¿è¨­å®š(8bité«˜é€ŸPWMãƒ¢ãƒ¼ãƒ‰)
+void Init_Timer0(void);
 
-//‚Æ‚è‚ ‚¦‚¸‚Ì‰ñ“]ƒeƒXƒg—pŠÖ”
-void Inti_CW_right(unsigned char pwm);
+//ã‚¿ã‚¤ãƒãƒ¼2ã®ãƒ¬ã‚¸ã‚¹ã‚¿è¨­å®š(8bité«˜é€ŸPWMãƒ¢ãƒ¼ãƒ‰)
+void Init_Timer2(void);
 
-//‚Æ‚è‚ ‚¦‚¸‚Ì‰ñ“]ƒeƒXƒg—pŠÖ”
-void Inti_CCW_right(unsigned char pwm);
+//ã¨ã‚Šã‚ãˆãšã®å›è»¢ãƒ†ã‚¹ãƒˆç”¨é–¢æ•°
+void Init_CW_right(unsigned char pwm);
 
-void Inti_CW_left(unsigned char pwm);
+//ã¨ã‚Šã‚ãˆãšã®å›è»¢ãƒ†ã‚¹ãƒˆç”¨é–¢æ•°
+void Init_CCW_right(unsigned char pwm);
 
-void Inti_CCW_left(unsigned char pwm);
+void Init_CW_left(unsigned char pwm);
+
+void Init_CCW_left(unsigned char pwm);
 
 #endif /* AVR_MOTER_H_ */

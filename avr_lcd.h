@@ -3,32 +3,37 @@
  *
  * Created: 2014/04/04 16:27:33
  *  Author: UEKI
- */ 
-
+ */
 
 #ifndef AVR_LCD_H_
 #define AVR_LCD_H_
 
-//LCDƒRƒ“ƒgƒ[ƒ‰‚Ì‰ŠúÝ’è
+//LCDã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ©ã®åˆæœŸè¨­å®š
 void lcd_init(void);
 
-//LCD‘—MÝ’è
+//LCDé€ä¿¡è¨­å®š
 void lcd_out(int code, int rs);
 
-//ƒRƒ}ƒ“ƒh‘—MŠÖ”
+//ã‚³ãƒžãƒ³ãƒ‰é€ä¿¡é–¢æ•°
 void lcd_cmd(int cmd);
 
-//ƒf[ƒ^‘—MŠÖ”
+//ãƒ‡ãƒ¼ã‚¿é€ä¿¡é–¢æ•°
 void lcd_data(int asci);
 
-//•\Ž¦ˆÊ’u’²®ŠÖ”
+//è¡¨ç¤ºä½ç½®èª¿æ•´é–¢æ•°
 void lcd_pos(int line, int col);
 
-//•¶Žš—ñ‘—MŠÖ”
+//æ–‡å­—åˆ—é€ä¿¡é–¢æ•°
 void lcd_str(char *str);
 
-//ƒNƒŠƒAŠÖ”
+//ã‚¯ãƒªã‚¢é–¢æ•°
 void lcd_clear(void);
 
+//æ•°å€¤ã‚’LCDã®ç¾åœ¨ã®ã‚«ãƒ¼ã‚½ãƒ«ä½ç½®ã‹ã‚‰é †ã«è¡¨ç¤ºã™ã‚‹
+//valueã«å€¤ã‚’ã€digitã«è¡¨ç¤ºæ¡æ•°ã‚’æ¸¡ã™
+// ä¾‹: lcd_number(321, 3) => 321
+//     lcd_number(321, 2) => 21
+//     lcd_number(321, 4) => 0321
+void lcd_number(int value, int digit);
 
 #endif /* AVR_LCD_H_ */
