@@ -271,19 +271,19 @@ int main(void)
 
 void beep(void)
 {
-	PORTB = 0b11100111;
+	sbi(PORTB, PB0);
 	_delay_ms(1500);
-	PORTB = 0b11100110;
+	cbi(PORTB, PB0);
 }
 
 void beep_start(void)
 {
-	PORTB = 0b11100111;
+	sbi(PORTB, PB0);
 }
 
 void beep_end(void)
 {
-	PORTB = 0b11100110;
+	cbi(PORTB, PB0);
 }
 
 void encoder(void)
