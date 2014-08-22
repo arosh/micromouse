@@ -100,16 +100,16 @@ void lcd_out(int code, int rs)
 	PORTC = (code & 0b11110000) | (PORTC & 0b00001111);		//PD2,3を使う場合に値が変わらないようにするための処置
 	
 	if(rs == 0){
-		cbi(PORTC, PB0); //コマンドを送信する
+		cbi(PORTC, PC0); //コマンドを送信する
 	}
 	else{
-		sbi(PORTC, PB0); //データを送信する
+		sbi(PORTC, PC0); //データを送信する
 	}
 	
 	_delay_ms(1);
-	sbi(PORTC, PB1); //Eのフラグを立てる
+	sbi(PORTC, PC1); //Eのフラグを立てる
 	_delay_ms(1);
-	cbi(PORTC, PB1); //Eのフラグを戻す
+	cbi(PORTC, PC1); //Eのフラグを戻す
 }
 
 
