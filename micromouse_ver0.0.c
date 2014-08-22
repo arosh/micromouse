@@ -311,10 +311,7 @@ void encoder(void)
 
 //各センサの値とロータリーエンコーダのカウント数を同時にLCDに表示
 void print_all_sensor(void)
-{
-	S_digit_partition();
-	E_digit_partition();
-	
+{	
 	lcd_pos(0,0);
   lcd_number(Left_RotaryEncorder_val, 5);
 	
@@ -339,8 +336,6 @@ void print_all_sensor(void)
 //各センサの値をLCDに表示
 void Print_ADC(void)
 {
-	S_digit_partition();
-	
 	lcd_str("RF  LF  L   R");
 	
 	lcd_pos(1,0);
@@ -359,9 +354,7 @@ void Print_ADC(void)
 }
 
 void print_RotaryEncorder(void)
-{
-	E_digit_partition();
-	
+{	
 	lcd_str("rotary encorder");
 	
 	lcd_pos(1,0);
