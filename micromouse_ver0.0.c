@@ -62,7 +62,9 @@ unsigned int reference_left_encoder;
 	
 // センサ用割り込み
 ISR(TIMER1_COMPA_vect){
+	
 	Init_ADC_get();
+	
 }
 
 // エンコーダ用割り込み
@@ -102,21 +104,16 @@ ISR(TIMER3_COMPA_vect){
 
 			control_right = (KP_RIGHT * errer_right);
 			control_left  = (KP_LEFT  * errer_left);
-			if(liner_front_val < 70){
-				
-				Init_CCW_left(15);
-				Init_CCW_right(11);
-				
-			}else{
-				Init_CW_right((int)control_right + 45);
-				Init_CW_left((int)control_left + 47);
-			}
+			
+			motor_right((int)control_right + 30);
+			motor_left((int)control_left + 35);
+			
 		}
 		//前壁があるとき
 		else{
 			
-			Init_CW_left(0);
-			Init_CW_right(0);
+			motor_brake_right();
+			motor_brake_left();
 			
 			turn_flag = 1;
 			
@@ -126,12 +123,14 @@ ISR(TIMER3_COMPA_vect){
 	//ターンフラグが立っているとき
 	else{
 		
+		
+		
 		//ターンをする
 		reference_right_encoder = Right_RotaryEncorder_val - 190;
 		reference_left_encoder  = Left_RotaryEncorder_val + 190;
 		
-		const float KP_RIGHT = 0.3;
-		const float KP_LEFT  = 0.32;
+		const float KP_RIGHT = 0.28;
+		const float KP_LEFT  = 0.28;
 		
 		int error_right_encoder = reference_right_encoder  - Right_RotaryEncorder_val;
 		int error_left_encoder  = reference_left_encoder  - Left_RotaryEncorder_val;
@@ -139,8 +138,8 @@ ISR(TIMER3_COMPA_vect){
 		float control_right = KP_RIGHT * error_right_encoder;
 		float control_left  = KP_LEFT  * error_left_encoder;
 		
-		moter_right((int)control_right - 10);
-		moter_left((int)control_left + 20);
+		motor_right((int)control_right - 10);
+		motor_left((int)control_left + 20);
 		
 		//
 		if( reference_left_encoder >  Left_RotaryEncorder_val){
@@ -261,7 +260,7 @@ int main(void)
 	sei();		//割り込み許可
 	
 	while(1){
-		print_all_sensor();
+		//print_all_sensor();
 		//print_RotaryEncorder();
 		//Print_ADC();
 		//switch_test();
@@ -272,19 +271,19 @@ int main(void)
 
 void beep(void)
 {
-	PORTB = 0b11100111;
+	PORTB = PORTB | _BV(PB0);
 	_delay_ms(1500);
-	PORTB = 0b11100110;
+	PORTB ^= _BV(PB0);
 }
 
 void beep_start(void)
 {
-	PORTB = 0b11100111;
+	PORTB = PORTB | _BV(PB0);
 }
 
 void beep_end(void)
 {
-	PORTB = 0b11100110;
+	PORTB ^= _BV(PB0);
 }
 
 void encoder(void)
@@ -339,16 +338,16 @@ void Print_ADC(void)
 	lcd_str("RF  LF  L   R");
 	
 	lcd_pos(1,0);
-  lcd_number(RightFront_Sensor_val, 3);
+	lcd_number(RightFront_Sensor_val, 3);
 	
 	lcd_pos(1,4);
-  lcd_number(LeftFront_Sensor_val, 3);
+	lcd_number(LeftFront_Sensor_val, 3);
 	
 	lcd_pos(1,8);
-  lcd_number(Left_Sensor_val, 3);
+	lcd_number(Left_Sensor_val, 3);
 	
 	lcd_pos(1,12);
-  lcd_number(Right_Sensor_val, 3);
+	lcd_number(Right_Sensor_val, 3);
 	
 	lcd_pos(0,0);
 }
@@ -358,10 +357,10 @@ void print_RotaryEncorder(void)
 	lcd_str("rotary encorder");
 	
 	lcd_pos(1,0);
-  lcd_number(Left_RotaryEncorder_val, 5);
+	lcd_number(Left_RotaryEncorder_val, 5);
 	
 	lcd_pos(1,6);
-  lcd_number(Right_RotaryEncorder_val, 5);
+	lcd_number(Right_RotaryEncorder_val, 5);
 	
 	lcd_pos(0,0);
 }
@@ -413,7 +412,7 @@ void Init_Timer1(void)
 	//		   WGM13=0, WGM12=1, WGM11=0, WGM10=0でCTCモード(データシート p.84, 表16-5の番号4)
 	//       #1 = 0, #0 = 0
   // TODO 設定が間違っているのに何故か動く
-	TCCR1A = 0b00000010;
+	TCCR1A = 0b00000000;
 	
 	//TCCR1B(Timer Counter1 Control register B)
 	//	7,6: ICNC1, ICES1 捕獲機道入力という謎の機能 (データシート p.82)
@@ -432,7 +431,7 @@ void Init_Timer1(void)
 	//         20MHz/1024 ==> 約20kHz
 	//         #2 = 1, #1 = 0, #0 = 1
   // TODO 設定が間違っているのに何故か動く
-	TCCR1B = 0b00000101;
+	TCCR1B = 0b00001101;
 	
 	//TCNT1(Timer Counter1)
 	//		タイマカウンタ(16bit)に直接アクセスできる
@@ -452,7 +451,7 @@ void Init_Timer1(void)
 	//
 	//		AD変換が完了する前に割り込んでも意味がないので、割り込み間隔は1360us以上にする必要がある。
 	//
-	//    1クロックは20kHz(50us)に設定しているので、
+	//		1クロックは20kHz(50us)に設定しているので、
 	//		3000us/50us = 60となる。
 	//
 	OCR1A = 1500;
@@ -514,11 +513,11 @@ void Init_Timer3(void)
 	//	2,1,0: 分周器設定 (データシートp.85, 表16-6)
 	//			ATmega1284P-AUの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
 	//			ロータリーエンコーダの回転を読むので、カウントレートがサンプリング周波数よりも、
-	//			大きくなってはいけないので今回のサンプリング周波数は100kHz(10us)とする
+	//			大きくなってはいけないので今回のサンプリング周波数は10kHz(100us)とする
 	//			20MHz/64 ==> 約312.5kHz(3.2us)
 	//			#2 = 0, #1 = 1, #0 = 1
   // TODO 設定が間違っているのに何故か動く
-	TCCR3B = 0b00000010;
+	TCCR3B = 0b00001011;
 	
 	//TCNT3(Timer Counter3)
 	//			タイマカウンタ(16bit)に直接アクセスできる
@@ -529,7 +528,7 @@ void Init_Timer3(void)
 	//			いつコンペアマッチAをさせるかを設定する(16bit)
 	//			サンプリング周波数を100kHz(10us)にしたいので
 	//			10/3.2 = 3.125 ここでは約4とする
-	OCR3A = 10;
+	OCR3A = 31;
 	
 	//OCR3B(Timer Counter3 Output Compare B Register)
 	//			いつコンペアマッチBをさせるかを設定する(16bit)

@@ -127,7 +127,7 @@ void lcd_data(int asci)							//4bitずつ送信
 {
 	lcd_out(asci, 1);
 	lcd_out(asci << 4, 1);
-	_delay_ms(0.05);
+	_delay_us(50);
 }
 
 //数値をLCDの現在のカーソル位置から順に表示する

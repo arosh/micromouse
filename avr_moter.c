@@ -25,7 +25,19 @@
 #include <util/delay.h>
 #include "avr_moter.h"
 
-void moter_right(int x)
+void motor_brake_left(void)
+{
+	TCCR0A = 0b00000011;
+	PORTB  = 0b00000110;
+}
+
+void motor_brake_right(void)
+{
+	TCCR2A = 0b00000011;
+	PORTD  = 0b00001111;
+}
+
+void motor_right(int x)
 {
 	if(x >= 0){
 		Init_CW_right(x);
@@ -35,7 +47,7 @@ void moter_right(int x)
 	}
 }
 
-void moter_left(int x)
+void motor_left(int x)
 {
 	if(x >= 0){
 		Init_CW_left(x);
@@ -48,7 +60,7 @@ void moter_left(int x)
 //とりあえずの回転テスト用関数
 void Init_CW_left(unsigned char pwm)
 {
-	TCCR0A = 0b10100011;		//出力設定初期化(AもBもPWM出力)
+	TCCR0A = 0b11110011;		//出力設定初期化(AもBもPWM出力)
 	TCCR0A = 0b11000011;		//OC0Bを通常ポートに変更
 	PORTB  = 0b00010110;		//PB4をhighに
 	OCR0A  = pwm;
