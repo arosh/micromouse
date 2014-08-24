@@ -40,10 +40,10 @@ void beep_start(void);
 void beep_end(void);
 
 //AD変換値を距離に変換(RF)
-/*float sensor_distance_convert_RF (int x);
+float sensor_distance_convert_RF (int x);
 
 //AD変換値を距離に変換(LF)
-float sensor_distance_convert_FL (int x);
+float sensor_distance_convert_LF (int x);
 
 //AD変換値を距離に変換(L)
 float sensor_distance_convert_L (int x);
@@ -53,10 +53,10 @@ float sensor_distance_convert_R (int x);
 
 float sensor_distance_convert_RF(int x)
 {
-	return 0.0038 * x * x - 1.3275 * x + 146.36;
+	return 0.0038 * x * x - 1.3275 * x + 141.36;
 }
 
-float sensor_distance_convert_RF(int x)
+float sensor_distance_convert_LF(int x)
 {
 	return 0.0031 * x * x - 1.1545 * x + 136.38;
 }
@@ -71,7 +71,6 @@ float sensor_distance_convert_R(int x)
 	return 0.0023 * x * x - 0.9322 * x + 133.16;
 }
 
-*/
 
 //各センサ値を格納する変数
 volatile unsigned char Left_Sensor_val;
@@ -79,9 +78,15 @@ volatile unsigned char LeftFront_Sensor_val;
 volatile unsigned char RightFront_Sensor_val;
 volatile unsigned char Right_Sensor_val;
 
+volatile float sensor_distance_LF;
+volatile float sensor_distance_RF; 
+volatile float sensor_distance_L;
+volatile float sensor_distance_R;
+
+
 //ロータリーエンコーダの値を格納する変数
-volatile unsigned int Left_RotaryEncorder_val  = 32768;
-volatile unsigned int Right_RotaryEncorder_val = 32768;
+volatile unsigned int Left_RotaryEncorder_val  = 10000;
+volatile unsigned int Right_RotaryEncorder_val = 10000;
 
 unsigned int reference_right_encoder;
 unsigned int reference_left_encoder;
@@ -97,25 +102,32 @@ ISR(TIMER1_OVF_vect){
 // エンコーダ用割り込み
 ISR(TIMER3_OVF_vect){
 	
+	//それぞれのAD変換値を距離[mm]に変換
+	sensor_distance_LF = sensor_distance_convert_LF(LeftFront_Sensor_val);
+	sensor_distance_RF = sensor_distance_convert_RF(RightFront_Sensor_val);
+	sensor_distance_L  = sensor_distance_convert_L(Left_Sensor_val);
+	sensor_distance_R  = sensor_distance_convert_R(Right_Sensor_val);
+ 	
+	//前壁検知のためにフロントのセンサの平均値をとる
+	float sensor_distance_LF_RF_AVE = (sensor_distance_LF + sensor_distance_RF) * 0.5;
+	
+	//エンコーダをよみとる
 	encoder();
-	/*char liner_front_val = (liner_change(RightFront_Sensor_val) +liner_change(LeftFront_Sensor_val)) * 0.5;
-	static char turn_flag = 0;
+	
+	/*static char turn_flag = 0;
 	
 	//ターンフラグが立っていないとき
 	if(turn_flag == 0){
 		
 		//前壁がないとき
-		if(liner_front_val > 59){
+		if(sensor_distance_LF_RF_AVE > 50){
 			
 			//直進
 			const float KP_RIGHT = 0.15;
 			const float KP_LEFT  = 0.15;
 
-			const char REFERENCE_RIGHT = 73;
-			const char REFERENCE_LEFT  = 73;
-		
-			float liner_right_val;
-			float liner_left_val;
+			const char REFERENCE_RIGHT = 70;
+			const char REFERENCE_LEFT  = 70;
 
 			float errer_right = 0.0;
 			float errer_left  = 0.0;
@@ -123,11 +135,8 @@ ISR(TIMER3_OVF_vect){
 			float control_right = 0.0;
 			float control_left  = 0.0;
 		
-			liner_right_val = liner_change(Right_Sensor_val);
-			liner_left_val  = liner_change(Left_Sensor_val);
-		
-			errer_right = REFERENCE_RIGHT - liner_right_val;
-			errer_left  = REFERENCE_LEFT  - liner_left_val;
+			errer_right = REFERENCE_RIGHT - sensor_distance_R;
+			errer_left  = REFERENCE_LEFT  - sensor_distance_L;
 
 			control_right = (KP_RIGHT * errer_right);
 			control_left  = (KP_LEFT  * errer_left);
@@ -172,7 +181,7 @@ ISR(TIMER3_OVF_vect){
 		if( reference_left_encoder >  Left_RotaryEncorder_val){
 			
 			//前壁があるとき
-			if(liner_front_val < 59){
+			if(liner_front_val < 50){
 				
 				turn_flag = 1;
 				
@@ -185,6 +194,9 @@ ISR(TIMER3_OVF_vect){
 			}
 		}
 	}*/
+	
+	
+	
 }
 
 int main(void)
@@ -264,7 +276,7 @@ int main(void)
 	 */
 	DDRD  = 0b11000000;
 	PORTD = 0b00001111;			//RE12D(ロータリーエンコーダの名前)は
-                          //プルアップ不要らしいが念のためプルアップは有効に
+								//プルアップ不要らしいが念のためプルアップは有効に
 	
 	//LCD初期化
 	lcd_init();
@@ -339,23 +351,28 @@ void encoder(void)
 //各センサの値とロータリーエンコーダのカウント数を同時にLCDに表示
 void print_all_sensor(void)
 {	
+	sensor_distance_LF = (int)sensor_distance_convert_LF(LeftFront_Sensor_val);
+	sensor_distance_RF = (int)sensor_distance_convert_RF(RightFront_Sensor_val);
+	sensor_distance_L  = (int)sensor_distance_convert_L(Left_Sensor_val);
+	sensor_distance_R  = (int)sensor_distance_convert_R(Right_Sensor_val);
+	
 	lcd_pos(0,0);
-  lcd_number(Left_RotaryEncorder_val, 5);
+	lcd_number(Left_RotaryEncorder_val, 5);
 	
 	lcd_pos(0,6);
-  lcd_number(Right_RotaryEncorder_val, 5);
+	lcd_number(Right_RotaryEncorder_val, 5);
 
 	lcd_pos(1,0);
-  lcd_number(RightFront_Sensor_val, 3);
+	lcd_number(sensor_distance_LF, 3);
 	
 	lcd_pos(1,4);
-  lcd_number(LeftFront_Sensor_val, 3);
+	lcd_number(sensor_distance_RF, 3);
 	
 	lcd_pos(1,8);
-  lcd_number(Left_Sensor_val, 3);
+	lcd_number(sensor_distance_L, 3);
 	
 	lcd_pos(1,12);
-  lcd_number(Right_Sensor_val, 3);
+	lcd_number(sensor_distance_R, 3);
 	
 	lcd_pos(0,0);
 }
