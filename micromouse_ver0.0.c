@@ -39,13 +39,39 @@ void beep(void);
 void beep_start(void);
 void beep_end(void);
 
-//AD変換値を距離に変換
-float liner_change(int x);
+//AD変換値を距離に変換(RF)
+/*float sensor_distance_convert_RF (int x);
 
-float liner_change(int x)
+//AD変換値を距離に変換(LF)
+float sensor_distance_convert_FL (int x);
+
+//AD変換値を距離に変換(L)
+float sensor_distance_convert_L (int x);
+
+//AD変換値を距離に変換(R)
+float sensor_distance_convert_R (int x);
+
+float sensor_distance_convert_RF(int x)
 {
-	return 0.0041 * x * x - 1.446 * x + 162.87;
+	return 0.0038 * x * x - 1.3275 * x + 146.36;
 }
+
+float sensor_distance_convert_RF(int x)
+{
+	return 0.0031 * x * x - 1.1545 * x + 136.38;
+}
+
+float sensor_distance_convert_L(int x)
+{
+	return 0.0025 * x * x - 0.9635 * x + 132.45;
+}
+
+float sensor_distance_convert_R(int x)
+{
+	return 0.0023 * x * x - 0.9322 * x + 133.16;
+}
+
+*/
 
 //各センサ値を格納する変数
 volatile unsigned char Left_Sensor_val;
@@ -61,17 +87,18 @@ unsigned int reference_right_encoder;
 unsigned int reference_left_encoder;
 	
 // センサ用割り込み
-ISR(TIMER1_COMPA_vect){
+ISR(TIMER1_OVF_vect){
 	
+	sei();
 	Init_ADC_get();
 	
 }
 
 // エンコーダ用割り込み
-ISR(TIMER3_COMPA_vect){
+ISR(TIMER3_OVF_vect){
 	
 	encoder();
-	char liner_front_val = (liner_change(RightFront_Sensor_val) +liner_change(LeftFront_Sensor_val)) * 0.5;
+	/*char liner_front_val = (liner_change(RightFront_Sensor_val) +liner_change(LeftFront_Sensor_val)) * 0.5;
 	static char turn_flag = 0;
 	
 	//ターンフラグが立っていないとき
@@ -157,7 +184,7 @@ ISR(TIMER3_COMPA_vect){
 				
 			}
 		}
-	}
+	}*/
 }
 
 int main(void)
@@ -260,7 +287,8 @@ int main(void)
 	sei();		//割り込み許可
 	
 	while(1){
-		//print_all_sensor();
+		
+		print_all_sensor();
 		//print_RotaryEncorder();
 		//Print_ADC();
 		//switch_test();
@@ -387,74 +415,77 @@ void switch_test(void)
 }
 
 /*
- *	Function Name : Init_Timer1
- *	Tittle        : タイマー1のレジスタ設定
- *	Input		      :	なし
- *	Output        :	なし
- *	Descripution  : CTCを使って手軽にカウントする
- *					        ISR(TIMER1_COMPA_vect)
+ *	Function Name	: Init_Timer1
+ *	Tittle			: タイマー1のレジスタ設定
+ *	Input			:	なし
+ *	Output			: なし
+ *	Descripution	: タイマーのオーバーフローにより割り込みを発生させる
+ *	ISR(TIMER1_OVF_vect)
  */
 void Init_Timer1(void)
 {
 	//TCCR1A(Timer Counter1 Control Register A)
 	//	7,6: OC1Aから出力するPWM波の設定
-	//       COM1A1=0, COM1A0=0で標準ポート動作 (データシート p.83, 表16-2)
-	//		   #7 = 0, #6 = 0
+	//		COM1A1=0, COM1A0=0で標準ポート動作 (データシート p.83, 表16-2)
+	//		#7 = 0, #6 = 0
 	//
 	//	5,4: OC1Bから出力するPWM波の設定
-	//       COM1B1=0, COM1B0=0で標準ポート動作 (データシート p.83, 表16-2)
-	//       #5 = 0, #4 = 0
+	//		COM1B1=0, COM1B0=0で標準ポート動作 (データシート p.83, 表16-2)
+	//		#5 = 0, #4 = 0
 	//
 	//	3,2: リザーブビット
-	//       #3 = 0, #2 = 0
+	//		#3 = 0, #2 = 0
 	//
 	//	1,0: PWM波形の種類の設定(下記のTCCR1Bにも設定が跨っているので注意)
-	//		   WGM13=0, WGM12=1, WGM11=0, WGM10=0でCTCモード(データシート p.84, 表16-5の番号4)
-	//       #1 = 0, #0 = 0
-  // TODO 設定が間違っているのに何故か動く
+	//		WGM13=0, WGM12=0, WGM11=0, WGM10=0で通常動作(データシート p.84, 表16-5の番号4)
+	//		#1 = 0, #0 = 0
+	//		TODO 設定が間違っているのに何故か動く
 	TCCR1A = 0b00000000;
 	
 	//TCCR1B(Timer Counter1 Control register B)
 	//	7,6: ICNC1, ICES1 捕獲機道入力という謎の機能 (データシート p.82)
-	//		   今回は使用しない
-	//		   #7 = 0, #6 = 0
+	//		今回は使用しない
+	//		#7 = 0, #6 = 0
 	//
 	//	5: リザーブビット
-	//		 #5 = 0
+	//		#5 = 0
 	//
 	//	4,3: PWM波形の種類の設定(上記に述べた設定の残り)
-	//       #4 = 0, #3 = 1
+	//		#4 = 0, #3 = 1
 	//
 	//	2,1,0: 分周器設定
-	//         ATmega1284P-AUの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
-	//         分周は1/1024
-	//         20MHz/1024 ==> 約20kHz
-	//         #2 = 1, #1 = 0, #0 = 1
-  // TODO 設定が間違っているのに何故か動く
-	TCCR1B = 0b00001101;
-	
-	//TCNT1(Timer Counter1)
-	//		タイマカウンタ(16bit)に直接アクセスできる
-	//		初期値をいれる
-	TCNT1 = 0;
-	
-	//OCR1A(Timer Counter1 Output Compare A Register)
-	//      いつコンペアマッチAをさせるかを設定する(16bit)
+	//		ATmega1284P-AUの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
+	//		分周は1/1024
+	//		20MHz/8 ==> 約2500kHz(0.4us)
+	//		#2 = 1, #1 = 0, #0 = 1
 	//
 	//		データシートのAD変換のところを見ると、
 	//		変換時間は13-260us(50k-1MHz)と書いてある。
 	//		今回AD変換の動作クロックは156kHzなので線形に推移すると仮定すると約240usになる。
 	//
-	//		AD変換時間は約240us またマルチプレクサの切り替え時間に100usいれている。
-	//		それを4回繰りかえりしているので、
-	//		(240+100)*4 = 1360us ここでは1360usとする。
+	//		AD変換時間は約240us またマルチプレクサの切り替え時間に50usいれている。
+	//		一回のADCにかかる時間は250usになる。
 	//
-	//		AD変換が完了する前に割り込んでも意味がないので、割り込み間隔は1360us以上にする必要がある。
+	//		AD変換が完了する前に割り込んでも意味がないので、割り込み間隔は250us以上にする必要がある。
 	//
-	//		1クロックは20kHz(50us)に設定しているので、
-	//		3000us/50us = 60となる。
+	//		CTCがうまくいかなかったため
+	//		オーバーフロー割り込みに変更した。
+	//		ということなので
+	//		0.4*2^16 = 0.0262s(38Hz)
+	//		1秒間に38回サンプリングするがADCの仕組みから/4することになるので1個あたり1秒間に約10回になる
+	//		
+	TCCR1B = 0b00000010;
+	
+	//TCNT1(Timer Counter1)
+	//		タイマカウンタ(16bit)に直接アクセスできる
+	//		初期値をいれる
 	//
-	OCR1A = 1500;
+	TCNT1 = 0;
+	
+	//OCR1A(Timer Counter1 Output Compare A Register)
+	//      いつコンペアマッチAをさせるかを設定する(16bit)
+	//
+	OCR1A = 0;
 	
 	//OCR1B(Timer Counter1 Output Compare B Register)
 	//		いつコンペアマッチBをさせるかを設定する(16bit)
@@ -464,93 +495,98 @@ void Init_Timer1(void)
 	//TIMSK1(Timer Counter 1 Interrupt Mask Register)
 	//		タイマ割り込みを許可するためのレジスタ
 	//	7,6,5,4,3: リザーブビット
-	//		         #7-3 = 0
+	//		#7-3 = 0
 	//
 	//  2 : B比較の許可
-	//		  使用しないので
-	//		  #2 = 0
+	//		使用しないので
+	//		#2 = 0
 	//
 	//  1 : A比較の許可
-	//		  使用するので
-	//		  #1 = 1
+	//		使用しないので
+	//		#1 = 0
 	//
 	//	0 : 漏れ割り込み許可
-	//		  使用しないので
-	//		  #0 = 0
-	TIMSK1 = 0b00000010;
+	//		使用するので
+	//		#0 = 1
+	TIMSK1 = 0b00000001;
 }
 
 void Init_Timer3(void)
 {
 	//TCCR3A(Timer Counter3 Control Register A)
 	//	7,6: OC3Aから出力するPWM波の設定
-	//       COM3A1=0, COM3A0=0で標準ポート動作 (データシート p.83, 表16-2)
-	//		   #7 = 0, #6 = 0
+	//		COM3A1=0, COM3A0=0で標準ポート動作 (データシート p.83, 表16-2)
+	//		#7 = 0, #6 = 0
 	//
 	//	5,4: OC3Bから出力するPWM波の設定
-	//       COM3B1=0, COM3B0=0で標準ポート動作 (データシート p.83, 表16-2)
-	//       #5 = 0, #4 = 0
+	//		COM3B1=0, COM3B0=0で標準ポート動作 (データシート p.83, 表16-2)
+	//		#5 = 0, #4 = 0
 	//
 	//	3,2: リザーブビット
-	//			 #3 = 0, #2 = 0
+	//		#3 = 0, #2 = 0
 	//
 	//	1,0: PWM波形の種類の設定(下記のTCCR3Bにも設定が跨っているので注意)
-	//		   WGM33=0, WGM32=1, WGM31=0, WGM30=0でCTCモード(データシート p.84, 表16-5の番号4)
-	//			#1 = 0, #0 = 0
+	//		WGM33=0, WGM32=1, WGM31=0, WGM30=0 通常動作モード(データシート p.84, 表16-5の番号0)
+	//		#1 = 0, #0 = 0
 	TCCR3A = 0b00000000;
 	
 	//TCCR3B(Timer Counter3 Control register B)
 	//	7,6: ICNC3, ICES3 捕獲機道入力という謎の機能 (データシート p.82)
-	//		   今回は使用しない
-	//		   #7 = 0, #6 = 0
+	//		今回は使用しない
+	//		#7 = 0, #6 = 0
 	//
 	//	5: リザーブビット
-	//		 #4 = 0
+	//		#4 = 0
 	//
 	//	4,3: PWM波形の種類の設定(上記に述べた設定の残り)
-	//       #4 = 0, #3 = 1
+	//		#4 = 0, #3 = 0
 	//
 	//	2,1,0: 分周器設定 (データシートp.85, 表16-6)
-	//			ATmega1284P-AUの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
-	//			ロータリーエンコーダの回転を読むので、カウントレートがサンプリング周波数よりも、
-	//			大きくなってはいけないので今回のサンプリング周波数は10kHz(100us)とする
-	//			20MHz/64 ==> 約312.5kHz(3.2us)
-	//			#2 = 0, #1 = 1, #0 = 1
-  // TODO 設定が間違っているのに何故か動く
-	TCCR3B = 0b00001011;
+	//		ATmega1284P-AUの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
+	//		ロータリーエンコーダの回転を読むので、カウントレートがサンプリング周波数よりも、
+	//		大きくなってはいけないので今回のサンプリング周波数は100kHz(10us)とする
+	//
+	//		今回は分周しない
+	//		20MHz(0.05us)
+	//		#2 = 0, #1 = 0, #0 = 1
+	TCCR3B = 0b00000001;
 	
 	//TCNT3(Timer Counter3)
-	//			タイマカウンタ(16bit)に直接アクセスできる
-	//			初期値をいれる
-	TCNT3 = 0;
+	//		タイマカウンタ(16bit)に直接アクセスできる
+	//		初期値をいれる
+	//		初期値に値をいれてオーバーフローさせて任意の周期をつくる
+	//		65536(2^16) - 200 = 65336
+	//		タイマーを200カウントさせる
+	//		0.05u * 200 = 10us(100kHz)
+	//
+	TCNT3 = 65336;
 	
 	//OCR3A(Timer Counter3 Output Compare A Register)
-	//			いつコンペアマッチAをさせるかを設定する(16bit)
-	//			サンプリング周波数を100kHz(10us)にしたいので
-	//			10/3.2 = 3.125 ここでは約4とする
-	OCR3A = 31;
+	//		いつコンペアマッチAをさせるかを設定する(16bit)
+	//		今回は使用しない
+	OCR3A = 0;
 	
 	//OCR3B(Timer Counter3 Output Compare B Register)
-	//			いつコンペアマッチBをさせるかを設定する(16bit)
-	//			今回は使用しない。
+	//		いつコンペアマッチBをさせるかを設定する(16bit)
+	//		今回は使用しない。
 	OCR3B = 0;
 
 	//TIMSK3(Timer Counter 3 Interrupt Mask Register)
 	//		タイマ割り込みを許可するためのレジスタ
 	//	7,6,5,4,3: リザーブビット
-	//		         #7-3 = 0
+	//		#7-3 = 0
 	//
 	//  2 : B比較の許可
-	//		  使用しないので
-	//		  #2 = 0
+	//		使用しないので
+	//		#2 = 0
 	//
 	//  1 : A比較の許可
-	//		  使用するので
-	//		  #1 = 1
+	//		使用しないので
+	//		#1 = 0
 	//
 	//	0 : 漏れ割り込み許可
-	//		  使用しないので
-	//		  #0 = 0
-	TIMSK3 = 0b00000010;
+	//		使用するので
+	//		#0 = 1
+	TIMSK3 = 0b00000001;
 }
 // vim: noet ts=4 sw=4 sts=0
