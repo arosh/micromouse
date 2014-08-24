@@ -73,10 +73,10 @@ float sensor_distance_convert_R(int x)
 
 
 //各センサ値を格納する変数
-volatile unsigned char Left_Sensor_val;
-volatile unsigned char LeftFront_Sensor_val;
-volatile unsigned char RightFront_Sensor_val;
-volatile unsigned char Right_Sensor_val;
+volatile extern unsigned char Left_Sensor_val;
+volatile extern unsigned char LeftFront_Sensor_val;
+volatile extern unsigned char RightFront_Sensor_val;
+volatile extern unsigned char Right_Sensor_val;
 
 volatile float sensor_distance_LF;
 volatile float sensor_distance_RF; 
@@ -94,7 +94,6 @@ unsigned int reference_left_encoder;
 // センサ用割り込み
 ISR(TIMER1_OVF_vect){
 	
-	sei();
 	Init_ADC_get();
 	
 }
@@ -114,13 +113,13 @@ ISR(TIMER3_OVF_vect){
 	//エンコーダをよみとる
 	encoder();
 	
-	/*static char turn_flag = 0;
+	static char turn_flag = 0;
 	
 	//ターンフラグが立っていないとき
 	if(turn_flag == 0){
 		
 		//前壁がないとき
-		if(sensor_distance_LF_RF_AVE > 50){
+		if(sensor_distance_LF_RF_AVE > 60){
 			
 			//直進
 			const float KP_RIGHT = 0.15;
@@ -129,20 +128,14 @@ ISR(TIMER3_OVF_vect){
 			const char REFERENCE_RIGHT = 70;
 			const char REFERENCE_LEFT  = 70;
 
-			float errer_right = 0.0;
-			float errer_left  = 0.0;
+			float errer_right = REFERENCE_RIGHT - sensor_distance_R;
+			float errer_left  = REFERENCE_LEFT  - sensor_distance_L;
 
-			float control_right = 0.0;
-			float control_left  = 0.0;
-		
-			errer_right = REFERENCE_RIGHT - sensor_distance_R;
-			errer_left  = REFERENCE_LEFT  - sensor_distance_L;
-
-			control_right = (KP_RIGHT * errer_right);
-			control_left  = (KP_LEFT  * errer_left);
+			float control_right = (KP_RIGHT * errer_right);
+			float control_left  = (KP_LEFT  * errer_left);
 			
-			motor_right((int)control_right + 30);
-			motor_left((int)control_left + 35);
+			motor_right((int)control_right + 38);
+			motor_left((int)control_left + 41);
 			
 		}
 		//前壁があるとき
@@ -165,8 +158,8 @@ ISR(TIMER3_OVF_vect){
 		reference_right_encoder = Right_RotaryEncorder_val - 190;
 		reference_left_encoder  = Left_RotaryEncorder_val + 190;
 		
-		const float KP_RIGHT = 0.28;
-		const float KP_LEFT  = 0.28;
+		const float KP_RIGHT = 0.20;
+		const float KP_LEFT  = 0.20;
 		
 		int error_right_encoder = reference_right_encoder  - Right_RotaryEncorder_val;
 		int error_left_encoder  = reference_left_encoder  - Left_RotaryEncorder_val;
@@ -181,7 +174,7 @@ ISR(TIMER3_OVF_vect){
 		if( reference_left_encoder >  Left_RotaryEncorder_val){
 			
 			//前壁があるとき
-			if(liner_front_val < 50){
+			if(sensor_distance_LF_RF_AVE < 60){
 				
 				turn_flag = 1;
 				
@@ -193,7 +186,7 @@ ISR(TIMER3_OVF_vect){
 				
 			}
 		}
-	}*/
+	}
 	
 	
 	
@@ -576,7 +569,7 @@ void Init_Timer3(void)
 	//		タイマーを200カウントさせる
 	//		0.05u * 200 = 10us(100kHz)
 	//
-	TCNT3 = 65336;
+	TCNT3 = 65436;
 	
 	//OCR3A(Timer Counter3 Output Compare A Register)
 	//		いつコンペアマッチAをさせるかを設定する(16bit)
