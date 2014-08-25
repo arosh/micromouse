@@ -13,6 +13,8 @@
 #include "avr_adc.h"
 #include <math.h>
 
+volatile int count = 0;
+
 //各スイッチのテスト
 void switch_test(void);
 
@@ -99,9 +101,11 @@ ISR(TIMER1_OVF_vect){
 }
 
 // エンコーダ用割り込み
-ISR(TIMER3_OVF_vect){
+ISR(TIMER3_COMPA_vect){
 	
-	//それぞれのAD変換値を距離[mm]に変換
+	encoder();
+	
+	/*//それぞれのAD変換値を距離[mm]に変換
 	sensor_distance_LF = sensor_distance_convert_LF(LeftFront_Sensor_val);
 	sensor_distance_RF = sensor_distance_convert_RF(RightFront_Sensor_val);
 	sensor_distance_L  = sensor_distance_convert_L(Left_Sensor_val);
@@ -187,7 +191,7 @@ ISR(TIMER3_OVF_vect){
 			}
 		}
 	}
-	
+	*/
 	
 	
 }
@@ -559,7 +563,7 @@ void Init_Timer3(void)
 	//		今回は分周しない
 	//		20MHz(0.05us)
 	//		#2 = 0, #1 = 0, #0 = 1
-	TCCR3B = 0b00000001;
+	TCCR3B = 0b00001011;
 	
 	//TCNT3(Timer Counter3)
 	//		タイマカウンタ(16bit)に直接アクセスできる
@@ -569,12 +573,12 @@ void Init_Timer3(void)
 	//		タイマーを200カウントさせる
 	//		0.05u * 200 = 10us(100kHz)
 	//
-	TCNT3 = 65436;
+	TCNT3 = 0;
 	
 	//OCR3A(Timer Counter3 Output Compare A Register)
 	//		いつコンペアマッチAをさせるかを設定する(16bit)
 	//		今回は使用しない
-	OCR3A = 0;
+	OCR3A = 30;
 	
 	//OCR3B(Timer Counter3 Output Compare B Register)
 	//		いつコンペアマッチBをさせるかを設定する(16bit)
@@ -592,11 +596,11 @@ void Init_Timer3(void)
 	//
 	//  1 : A比較の許可
 	//		使用しないので
-	//		#1 = 0
+	//		#1 = 1
 	//
 	//	0 : 漏れ割り込み許可
 	//		使用するので
-	//		#0 = 1
-	TIMSK3 = 0b00000001;
+	//		#0 = 0
+	TIMSK3 = 0b00000010;
 }
 // vim: noet ts=4 sw=4 sts=0
