@@ -87,8 +87,8 @@ volatile float sensor_distance_R;
 
 
 //ロータリーエンコーダの値を格納する変数
-volatile unsigned int Left_RotaryEncorder_val  = 10000;
-volatile unsigned int Right_RotaryEncorder_val = 10000;
+volatile unsigned int Left_RotaryEncorder_val;
+volatile unsigned int Right_RotaryEncorder_val;
 
 unsigned int reference_right_encoder;
 unsigned int reference_left_encoder;
@@ -216,7 +216,6 @@ int main(void)
 	 * 1: 右センサADC入力
 	 * 2: 左センサADC入力
 	 * 3: 右前センサ(左)ADC入力
-	 *
 	 * 4: 左前センサのLED制御
 	 * 5: 左センサのLED制御
 	 * 6: 右センサのLED制御
@@ -247,8 +246,8 @@ int main(void)
 	 *
 	 * 0: LCD表示用(RSの切り替え 0:コマンド 1:データ)
 	 * 1: LCD表示用(Eのフラグ設定 このbitが立ちがるとLCDにデータが送信される)
-	 * 2:
-	 * 3:
+	 * 2: 左ロータリーエンコーダのパルス波Aを入力
+	 * 3: 左ロータリーエンコーダのパルス波Aを入力
 	 * 4: LCD表示用(データバス)
 	 * 5: LCD表示用(データバス)
 	 * 6: LCD表示用(データバス)
@@ -256,13 +255,13 @@ int main(void)
 	 *
 	 */
 	DDRC  = 0b11110011;
-	PORTC = 0b00000000;
+	PORTC = 0b00001100;
 	
 	/*
 	 *	PORTD
 	 *
-	 * 0: 左ロータリーエンコーダのパルス波Aを入力
-	 * 1: 左ロータリーエンコーダのパルス波Bを入力
+	 * 0:
+	 * 1:
 	 * 2: 右ロータリーエンコーダのパルス波Aを入力
 	 * 3: 右ロータリーエンコーダのパルス波Bを入力
 	 * 4:
@@ -272,7 +271,7 @@ int main(void)
 	 *
 	 */
 	DDRD  = 0b11000000;
-	PORTD = 0b00001111;			//RE12D(ロータリーエンコーダの名前)は
+	PORTD = 0b00001100;			//RE12D(ロータリーエンコーダの名前)は
 								//プルアップ不要らしいが念のためプルアップは有効に
 	
 	//LCD初期化
@@ -297,8 +296,8 @@ int main(void)
 	
 	while(1){
 		
-		print_all_sensor();
-		//print_RotaryEncorder();
+		//print_all_sensor();
+		print_RotaryEncorder();
 		//Print_ADC();
 		//switch_test();
 	}
@@ -332,14 +331,14 @@ void encoder(void)
 		0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0
 	};
 	
-	static unsigned int left, right;
+	static unsigned int left = 0, right = 0;
 	unsigned int m,n;
 	
-	left  = (left << 2) + (PIND & 3);
-	right = (right << 2) + ((PIND & 12) >> 2);
+	right = (right << 2) + ((PIND >> 2) & 0b00000011);
+	left  = (left << 2) + ((PINC >> 2)  & 0b00000011);
 	
-	m = dir_left[left & 15];
-	n = dir_right[right & 15];
+	m = (int)dir_left[left & 15];
+	n = (int)dir_right[right & 15];
 	
 	Left_RotaryEncorder_val  += m;	
 	Right_RotaryEncorder_val += n;
@@ -354,10 +353,10 @@ void print_all_sensor(void)
 	sensor_distance_R  = (int)sensor_distance_convert_R(Right_Sensor_val);
 	
 	lcd_pos(0,0);
-	lcd_number(Left_RotaryEncorder_val, 5);
+	lcd_number(Right_RotaryEncorder_val, 5);
 	
 	lcd_pos(0,6);
-	lcd_number(Right_RotaryEncorder_val, 5);
+	lcd_number(Left_RotaryEncorder_val, 5);
 
 	lcd_pos(1,0);
 	lcd_number(sensor_distance_LF, 3);
