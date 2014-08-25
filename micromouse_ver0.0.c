@@ -335,7 +335,7 @@ void encoder(void)
 	unsigned int m,n;
 	
 	right = (right << 2) + ((PIND >> 2) & 0b00000011);
-	left  = (left << 2) + ((PINC >> 2)  & 0b00000011);
+	left  = (left << 2) + ((PINC >> 2)  & 0b00000011);	//a
 	
 	m = (int)dir_left[left & 15];
 	n = (int)dir_right[right & 15];
