@@ -61,7 +61,8 @@ void Init_CW_left(unsigned char pwm)
 {
 	TCCR0A = 0b11110011;		//出力設定初期化(AもBもPWM出力)
 	TCCR0A = 0b11000011;		//OC0Bを通常ポートに変更
-	PORTB  = 0b00010110;		//PB4をhighに
+	cbi(PORTB,PB3); // PB3をLOWに
+	sbi(PORTB,PB4); // PB4をHIGHに
 	OCR0A  = pwm;
 }
 
@@ -70,7 +71,8 @@ void Init_CCW_left(unsigned char pwm)
 {
 	TCCR0A = 0b11110011;		//出力設定初期化(AもBもPWM出力)
 	TCCR0A = 0b00110011;		//OC0Aを通常ポートに変更
-	PORTB  = 0b00001110;		//PB3をhighに
+	cbi(PORTB,PB4); // PB4をLOWに
+	sbi(PORTB,PB3); // PB3をHIGHに
 	OCR0B  = pwm;
 }
 
@@ -79,7 +81,8 @@ void Init_CW_right(unsigned char pwm)
 {
 	TCCR2A = 0b11110011;		//出力設定初期化(AもBもPWM出力)
 	TCCR2A = 0b00110011;		//OC0Aを通常ポートに変更
-	PORTD  = 0b10001111;		//PD7をhighに
+	cbi(PORTD,PD6); // PD6をLOWに
+	sbi(PORTD,PD7); // PD7をHIGHに
 	OCR2B  = pwm;
 }
 
@@ -88,7 +91,8 @@ void Init_CCW_right(unsigned char pwm)
 {
 	TCCR2A = 0b11110011;		//出力設定初期化(AもBもPWM出力)
 	TCCR2A = 0b11000011;		//OC0Bを通常ポートに変更
-	PORTD  = 0b01001111;		//PD6をhighに
+	cbi(PORTD,PD7); // PD7をLOWに
+	sbi(PORTD,PD6); // PD6をHIGHに
 	OCR2A  = pwm;
 }
 
