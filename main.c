@@ -1,5 +1,5 @@
 /*
- * micromouse_ver0.c
+ * main.c
  *
  * Created: 2014/04/07 21:16:13
  *  Author: UEKI
@@ -150,9 +150,6 @@ ISR(TIMER3_COMPA_vect){
 	
 	//ターンフラグが立っているとき
 	else{
-		
-		
-		
 		//ターンをする
 		reference_right_encoder = Right_RotaryEncorder_val - 190;
 		reference_left_encoder  = Left_RotaryEncorder_val + 190;
@@ -182,8 +179,6 @@ ISR(TIMER3_COMPA_vect){
 		}
 	}
 	*/
-	
-	
 }
 
 int main(void)
@@ -532,7 +527,7 @@ void Init_Timer3(void)
 	TCCR3A = 0b00000000;
 	
 	//TCCR3B(Timer Counter3 Control register B)
-	//	7,6: ICNC3, ICES3 捕獲機道入力という謎の機能 (データシート p.82)
+	//	7,6: ICNC3, ICES3 捕獲起動入力という謎の機能 (データシート p.82)
 	//		今回は使用しない
 	//		#7 = 0, #6 = 0
 	//
@@ -574,20 +569,21 @@ void Init_Timer3(void)
 
 	//TIMSK3(Timer Counter 3 Interrupt Mask Register)
 	//		タイマ割り込みを許可するためのレジスタ
-	//	7,6,5,4,3: リザーブビット
-	//		#7-3 = 0
 	//
-	//  2 : B比較の許可
-	//		使用しないので
-	//		#2 = 0
+	//	7-3: リザーブビット
+	//		 #7-3 = 0
 	//
-	//  1 : A比較の許可
-	//		使用しないので
-	//		#1 = 1
+	//  2  : B比較の許可
+	//		 使用しないので
+	//		 #2 = 0
 	//
-	//	0 : 漏れ割り込み許可
-	//		使用するので
-	//		#0 = 0
+	//  1  : A比較の許可
+	//		 使用しないので
+	//		 #1 = 1
+	//
+	//	0  : 漏れ割り込み許可
+	//		 使用するので
+	//		 #0 = 0
 	TIMSK3 = 0b00000010;
 }
 // vim: noet ts=4 sw=4 sts=0
