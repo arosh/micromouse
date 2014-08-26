@@ -72,7 +72,6 @@ float sensor_distance_convert_R(int x)
 	return 0.0023 * x * x - 0.9322 * x + 133.16;
 }
 
-
 //各センサ値を格納する変数
 volatile extern unsigned char Left_Sensor_val;
 volatile extern unsigned char LeftFront_Sensor_val;
@@ -84,7 +83,6 @@ volatile float sensor_distance_RF;
 volatile float sensor_distance_L;
 volatile float sensor_distance_R;
 
-
 //ロータリーエンコーダの値を格納する変数
 volatile unsigned int Left_RotaryEncorder_val;
 volatile unsigned int Right_RotaryEncorder_val;
@@ -94,9 +92,7 @@ unsigned int reference_left_encoder;
 	
 // センサ用割り込み
 ISR(TIMER1_OVF_vect){
-	
 	Init_ADC_get();
-	
 }
 
 // エンコーダ用割り込み
@@ -195,11 +191,12 @@ int main(void)
 	cli();		//割り込み禁止
 	
 	/*
-	 * 簡単なPORTの説明
+	 * 簡単なPORTの説明(x:アルファベットABCD n:数字0123...)
 	 *
-	 * DDR_  方向レジスタ(0:入力 1:出力)
-	 * PORT_ 出力レジスタ(入力の場合 0:プルアップ禁止 1:プルアップ有効)
+	 * DDRx  方向レジスタ(0:入力 1:出力)
+	 * PORTx 出力レジスタ(入力の場合 0:プルアップ禁止 1:プルアップ有効)
 	 *					 (出力の場合 0:Low 1:High)
+	 * PINx  入力レジスタ
 	 *
 	 */
 	
@@ -319,7 +316,7 @@ void beep_end(void)
 
 void encoder(void)
 {
-	static const int dir_right[] = {								
+	static const int dir_right[] = {
 		0, 1, -1, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, -1, 1, 0
 	};
 	static const int dir_left[] = {
@@ -327,16 +324,12 @@ void encoder(void)
 	};
 	
 	static unsigned int left = 0, right = 0;
-	unsigned int m,n;
 	
-	right = (right << 2) + ((PIND >> 2) & 0b00000011);
-	left  = (left << 2) + ((PINC >> 2)  & 0b00000011);	//a
+	right = (right << 2) + ((PIND >> 2) & 0b00000011); // PORTDの#3と#2
+	left  = (left << 2)  + ((PINC >> 2) & 0b00000011); // PORTCの#3と#2
 	
-	m = (int)dir_left[left & 15];
-	n = (int)dir_right[right & 15];
-	
-	Left_RotaryEncorder_val  += m;	
-	Right_RotaryEncorder_val += n;
+	Left_RotaryEncorder_val  += dir_left[left & 0b00001111];
+	Right_RotaryEncorder_val += dir_right[right & 0b00001111];
 }
 
 //各センサの値とロータリーエンコーダのカウント数を同時にLCDに表示
