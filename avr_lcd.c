@@ -126,7 +126,7 @@ void lcd_data(int asci)							//4bitずつ送信
 {
 	lcd_out(asci, 1);
 	lcd_out(asci << 4, 1);
-	_delay_ms(0.05);
+	_delay_us(50);
 }
 
 //数値をLCDの現在のカーソル位置から順に表示する
@@ -134,7 +134,7 @@ void lcd_data(int asci)							//4bitずつ送信
 // 例: lcd_number(321, 3) => 321
 //     lcd_number(321, 2) => 21
 //     lcd_number(321, 4) => 0321
-void lcd_number(int value, int digit) {
+void lcd_number(unsigned int value, int digit) {
   int i;
   int base = 1;
   for(i = 0; i < digit - 1; ++i) base *= 10;

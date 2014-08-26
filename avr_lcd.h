@@ -34,6 +34,6 @@ void lcd_clear(void);
 // 例: lcd_number(321, 3) => 321
 //     lcd_number(321, 2) => 21
 //     lcd_number(321, 4) => 0321
-void lcd_number(int value, int digit);
+void lcd_number(unsigned int value, int digit);
 
 #endif /* AVR_LCD_H_ */
