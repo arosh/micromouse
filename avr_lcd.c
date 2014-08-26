@@ -33,8 +33,7 @@
  */
 
 #include <avr/io.h>
-#define F_CPU 20000000
-#include <util/delay.h>
+#include "avr_tools.h"
 #include "avr_lcd.h"
 
 //文字を全消去する
@@ -98,19 +97,19 @@ void lcd_init(void)
  */
 void lcd_out(int code, int rs)
 {
-	PORTC = (code & 0b11110000) | (PORTC & 0b00001100);		//PD2,3を使う場合に値が変わらないようにするための処置
+	PORTC = (code & 0b11110000) | (PORTC & 0b00001111);		//PD2,3を使う場合に値が変わらないようにするための処置
 	
 	if(rs == 0){
-		PORTC = code & 0b11111110;				//コマンドを送信する
+		cbi(PORTC, PC0); //コマンドを送信する
 	}
 	else{
-		PORTC = code | 0b00000001;				//データを送信する
+		sbi(PORTC, PC0); //データを送信する
 	}
 	
 	_delay_ms(1);
-	PORTC = PORTC | 0b00000010;					//Eのフラグを立てる
+	sbi(PORTC, PC1); //Eのフラグを立てる
 	_delay_ms(1);
-	PORTC = PORTC & 0b11111101;					//Eのフラグを戻す
+	cbi(PORTC, PC1); //Eのフラグを戻す
 }
 
 //コマンドを送信する

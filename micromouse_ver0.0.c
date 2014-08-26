@@ -5,9 +5,8 @@
  *  Author: UEKI
  */
 #include <avr/io.h>
-#define F_CPU 20000000
-#include <util/delay.h>
 #include <avr/interrupt.h>
+#include "avr_tools.h"
 #include "avr_lcd.h"
 #include "avr_moter.h"
 #include "avr_adc.h"
@@ -303,19 +302,19 @@ int main(void)
 
 void beep(void)
 {
-	PORTB = PORTB | _BV(PB0);
+	sbi(PORTB, PB0);
 	_delay_ms(1500);
-	PORTB ^= _BV(PB0);
+	cbi(PORTB, PB0);
 }
 
 void beep_start(void)
 {
-	PORTB = PORTB | _BV(PB0);
+	sbi(PORTB, PB0);
 }
 
 void beep_end(void)
 {
-	PORTB ^= _BV(PB0);
+	cbi(PORTB, PB0);
 }
 
 void encoder(void)

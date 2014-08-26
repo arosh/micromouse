@@ -5,9 +5,8 @@
  *  Author: takemichi
  */
 #include <avr/io.h>
-#define F_CPU 20000000
 #include <avr/interrupt.h>
-#include <util/delay.h>
+#include "avr_tools.h"
 #include "avr_adc.h"
 
 volatile unsigned char Left_Sensor_val = 0;
@@ -49,16 +48,12 @@ void Init_ADC_get(void)
 	const unsigned char LEDPORT[] = { 0b10000000, 0b00010000, 0b00100000, 0b01000000 };
 	const unsigned char MUXREG[]  = { 0b00100000, 0b00100001, 0b00100010, 0b00100011 };
 
-	
-
 	PORTA = LEDPORT[adc_chanel];			//LED(ch0)発行
 	
 	ADMUX = MUXREG[adc_chanel];			//入力をch0に切り替え
 	_delay_us(50);						//切り替えが安定するまで待機
 
-	ADCSRA = 0b11001111;				//AD変換スタート		#6 = 1 にすると変換がスタートする
-
-	
+	sbi(ADCSRA, ADSC); //AD変換スタート		#6 = 1 にすると変換がスタートする
 }
 
 /*
