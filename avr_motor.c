@@ -1,5 +1,5 @@
 /*
- * avr_moter.c
+ * avr_motor.c
  *
  * Created: 2014/04/18 20:20:03
  *  Author: UEKI
@@ -22,7 +22,7 @@
 
 #include <avr/io.h>
 #include "avr_tools.h"
-#include "avr_moter.h"
+#include "avr_motor.h"
 
 void motor_brake_left(void)
 {

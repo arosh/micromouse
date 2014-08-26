@@ -10,7 +10,7 @@
 #include <avr/interrupt.h>
 #include "avr_tools.h"
 #include "avr_lcd.h"
-#include "avr_moter.h"
+#include "avr_motor.h"
 #include "avr_adc.h"
 
 //各センサの値をLCDに表示

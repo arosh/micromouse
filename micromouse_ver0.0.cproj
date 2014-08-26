@@ -107,10 +107,10 @@
     <Compile Include="avr_lcd.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="avr_moter.c">
+    <Compile Include="avr_motor.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="avr_moter.h">
+    <Compile Include="avr_motor.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="avr_print.c">
