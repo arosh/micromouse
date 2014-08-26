@@ -12,9 +12,9 @@
     <OutputFileName>$(MSBuildProjectName)</OutputFileName>
     <OutputFileExtension>.elf</OutputFileExtension>
     <OutputDirectory>$(MSBuildProjectDirectory)\$(Configuration)</OutputDirectory>
-    <AssemblyName>micromouse_ver0.0</AssemblyName>
-    <Name>micromouse_ver0.0</Name>
-    <RootNamespace>micromouse_ver0.0</RootNamespace>
+    <AssemblyName>micromouse</AssemblyName>
+    <Name>micromouse</Name>
+    <RootNamespace>micromouse</RootNamespace>
     <ToolchainFlavour>Native</ToolchainFlavour>
     <KeepTimersRunning>true</KeepTimersRunning>
     <OverrideVtor>false</OverrideVtor>
@@ -119,7 +119,7 @@
     <Compile Include="avr_print.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="micromouse_ver0.0.c">
+    <Compile Include="main.c">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>
