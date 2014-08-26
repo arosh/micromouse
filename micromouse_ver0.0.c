@@ -73,12 +73,11 @@ float sensor_distance_convert_R(int x)
 	return 0.0023 * x * x - 0.9322 * x + 133.16;
 }
 
-
 //各センサ値を格納する変数
-volatile extern unsigned char Left_Sensor_val;
-volatile extern unsigned char LeftFront_Sensor_val;
-volatile extern unsigned char RightFront_Sensor_val;
-volatile extern unsigned char Right_Sensor_val;
+extern volatile unsigned char Left_Sensor_val;
+extern volatile unsigned char LeftFront_Sensor_val;
+extern volatile unsigned char RightFront_Sensor_val;
+extern volatile unsigned char Right_Sensor_val;
 
 volatile float sensor_distance_LF;
 volatile float sensor_distance_RF; 
@@ -94,7 +93,7 @@ unsigned int reference_right_encoder;
 unsigned int reference_left_encoder;
 	
 // センサ用割り込み
-ISR(TIMER1_OVF_vect){
+ISR(TIMER1_COMPA_vect){
 	
 	Init_ADC_get();
 	
@@ -102,6 +101,16 @@ ISR(TIMER1_OVF_vect){
 
 // エンコーダ用割り込み
 ISR(TIMER3_COMPA_vect){
+	
+	static int sensor_count = 0;
+	
+	if(sensor_count >= 250){
+		
+		Init_ADC_get();
+		sensor_count = 0;
+		
+	}
+	sensor_count++;
 	
 	encoder();
 	
@@ -283,7 +292,7 @@ int main(void)
   //2:左モーターPWM
 	Init_Timer2();
   //1:センサ用
-	Init_Timer1();
+	//Init_Timer1();
   //3:エンコーダ読み取り+姿勢制御
 	Init_Timer3();
 	
@@ -296,8 +305,8 @@ int main(void)
 	
 	while(1){
 		
-		//print_all_sensor();
-		print_RotaryEncorder();
+		print_all_sensor();
+		//print_RotaryEncorder();
 		//Print_ADC();
 		//switch_test();
 	}
@@ -332,13 +341,13 @@ void encoder(void)
 	};
 	
 	static unsigned int left = 0, right = 0;
-	unsigned int m,n;
+	int m,n;
 	
 	right = (right << 2) + ((PIND >> 2) & 0b00000011);
-	left  = (left << 2) + ((PINC >> 2)  & 0b00000011);	//a
+	left  = (left << 2) + ((PINC >> 2)  & 0b00000011);
 	
-	m = (int)dir_left[left & 15];
-	n = (int)dir_right[right & 15];
+	m = dir_left[left & 15];
+	n = dir_right[right & 15];
 	
 	Left_RotaryEncorder_val  += m;	
 	Right_RotaryEncorder_val += n;
@@ -376,19 +385,24 @@ void print_all_sensor(void)
 //各センサの値をLCDに表示
 void Print_ADC(void)
 {
+	sensor_distance_LF = (int)sensor_distance_convert_LF(LeftFront_Sensor_val);
+	sensor_distance_RF = (int)sensor_distance_convert_RF(RightFront_Sensor_val);
+	sensor_distance_L  = (int)sensor_distance_convert_L(Left_Sensor_val);
+	sensor_distance_R  = (int)sensor_distance_convert_R(Right_Sensor_val);
+	
 	lcd_str("RF  LF  L   R");
 	
 	lcd_pos(1,0);
-	lcd_number(RightFront_Sensor_val, 3);
+	lcd_number(sensor_distance_RF, 3);
 	
 	lcd_pos(1,4);
-	lcd_number(LeftFront_Sensor_val, 3);
+	lcd_number(sensor_distance_LF, 3);
 	
 	lcd_pos(1,8);
-	lcd_number(Left_Sensor_val, 3);
+	lcd_number(sensor_distance_L, 3);
 	
 	lcd_pos(1,12);
-	lcd_number(Right_Sensor_val, 3);
+	lcd_number(sensor_distance_R, 3);
 	
 	lcd_pos(0,0);
 }
@@ -472,15 +486,6 @@ void Init_Timer1(void)
 	//		20MHz/8 ==> 約2500kHz(0.4us)
 	//		#2 = 1, #1 = 0, #0 = 1
 	//
-	//		データシートのAD変換のところを見ると、
-	//		変換時間は13-260us(50k-1MHz)と書いてある。
-	//		今回AD変換の動作クロックは156kHzなので線形に推移すると仮定すると約240usになる。
-	//
-	//		AD変換時間は約240us またマルチプレクサの切り替え時間に50usいれている。
-	//		一回のADCにかかる時間は250usになる。
-	//
-	//		AD変換が完了する前に割り込んでも意味がないので、割り込み間隔は250us以上にする必要がある。
-	//
 	//		CTCがうまくいかなかったため
 	//		オーバーフロー割り込みに変更した。
 	//		ということなので
@@ -539,7 +544,7 @@ void Init_Timer3(void)
 	//		#3 = 0, #2 = 0
 	//
 	//	1,0: PWM波形の種類の設定(下記のTCCR3Bにも設定が跨っているので注意)
-	//		WGM33=0, WGM32=1, WGM31=0, WGM30=0 通常動作モード(データシート p.84, 表16-5の番号0)
+	//		WGM33=0, WGM32=1, WGM31=0, WGM30=0 CTCモード(データシート p.84, 表16-5の番号4)
 	//		#1 = 0, #0 = 0
 	TCCR3A = 0b00000000;
 	
@@ -552,36 +557,53 @@ void Init_Timer3(void)
 	//		#4 = 0
 	//
 	//	4,3: PWM波形の種類の設定(上記に述べた設定の残り)
-	//		#4 = 0, #3 = 0
+	//		#4 = 0, #3 = 1
 	//
 	//	2,1,0: 分周器設定 (データシートp.85, 表16-6)
 	//		ATmega1284P-AUの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
-	//		ロータリーエンコーダの回転を読むので、カウントレートがサンプリング周波数よりも、
-	//		大きくなってはいけないので今回のサンプリング周波数は100kHz(10us)とする
-	//
-	//		今回は分周しない
-	//		20MHz(0.05us)
-	//		#2 = 0, #1 = 0, #0 = 1
+	//		メインクロックを64分周して使用する
+	//		20MHz(0.05us)/ 64 = 312.5kHz(3.2us)
+	//		#2 = 0, #1 = 1, #0 = 1
 	TCCR3B = 0b00001011;
 	
 	//TCNT3(Timer Counter3)
 	//		タイマカウンタ(16bit)に直接アクセスできる
 	//		初期値をいれる
-	//		初期値に値をいれてオーバーフローさせて任意の周期をつくる
-	//		65536(2^16) - 200 = 65336
-	//		タイマーを200カウントさせる
-	//		0.05u * 200 = 10us(100kHz)
+	//		今回は使用ない
 	//
 	TCNT3 = 0;
 	
 	//OCR3A(Timer Counter3 Output Compare A Register)
 	//		いつコンペアマッチAをさせるかを設定する(16bit)
-	//		今回は使用しない
-	OCR3A = 30;
+	//
+	//		コンペアマッチAではロータリーエンコーダカウントと姿勢制御の割り込みを行う
+	//		ロータリーエンコーダの回転を読むので、カウントレートがサンプリング周波数よりも、
+	//		大きくなってはいけないので今回のサンプリング周波数は10kHz(100us)とする
+	//		1クロックが312.5KHz(3.2us)なので
+	//		100u / 3.2u = 31.25 今回は31にする
+	
+	//		また同時に距離センサの割り込みを行う
+	//		データシートのAD変換のところを見ると、
+	//		変換時間は13-260us(50k-1MHz)と書いてある。
+	//		今回AD変換の動作クロックは156kHzなので線形に推移すると仮定すると約240usになる。
+	//
+	//		AD変換時間は約240us またマルチプレクサの切り替え時間に50usいれている。
+	//		一回のADCにかかる時間は250usになる。
+	//
+	//		AD変換が完了する前に割り込んでも意味がないので、割り込み間隔は250us以上にする必要がある。
+	//		だいたい40Hz(0.025s)位(1個当たり1秒間に10サンプリング)すればいいと思うので
+	//		コンペアマッチAの割り込み関数の中で250カウントする
+	//		サンプリング周期は100usなので
+	//		0.025 / (100 * 10^-6) = 250 より割り込み関数内で250カウントとることにする
+	OCR3A = 31;
 	
 	//OCR3B(Timer Counter3 Output Compare B Register)
 	//		いつコンペアマッチBをさせるかを設定する(16bit)
-	//		今回は使用しない。
+	//		だいたい40Hz(0.025s)位(1個当たり1秒間に10サンプリング)すればいいと思うので
+	//		0.025s / (3.2 * 10^-6) = 7812.5なので、今回は7812とする。
+	//
+	//
+	//
 	OCR3B = 0;
 
 	//TIMSK3(Timer Counter 3 Interrupt Mask Register)
@@ -594,11 +616,11 @@ void Init_Timer3(void)
 	//		#2 = 0
 	//
 	//  1 : A比較の許可
-	//		使用しないので
+	//		使用するので
 	//		#1 = 1
 	//
 	//	0 : 漏れ割り込み許可
-	//		使用するので
+	//		使用しないので
 	//		#0 = 0
 	TIMSK3 = 0b00000010;
 }
