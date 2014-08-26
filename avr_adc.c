@@ -46,17 +46,19 @@ ISR(ADC_vect){
 
 void Init_ADC_get(void)
 {
-  //                                RightFront  LeftFront      Left       Right
 	const unsigned char LEDPORT[] = { 0b10000000, 0b00010000, 0b00100000, 0b01000000 };
-  // Init_ADCの記述と整合性がとれていなかったので、0b0010... から 0b0110...に変更
-  // 現在順番がおかしい
-	const unsigned char MUXREG[]  = { 0b01100000, 0b01100001, 0b01100010, 0b01100011 };
+	const unsigned char MUXREG[]  = { 0b00100000, 0b00100001, 0b00100010, 0b00100011 };
 
-	PORTA = LEDPORT[adc_chanel];			//LED(ch0)発光
+	
+
+	PORTA = LEDPORT[adc_chanel];			//LED(ch0)発行
 	
 	ADMUX = MUXREG[adc_chanel];			//入力をch0に切り替え
 	_delay_us(50);						//切り替えが安定するまで待機
-  ADCSRA |= (1 << 6);				//AD変換スタート		#6 = 1 にすると変換がスタートする
+
+	ADCSRA = 0b11001111;				//AD変換スタート		#6 = 1 にすると変換がスタートする
+
+	
 }
 
 /*
