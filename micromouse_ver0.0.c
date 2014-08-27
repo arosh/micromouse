@@ -41,33 +41,25 @@ void beep(void);
 void beep_start(void);
 void beep_end(void);
 
-//AD変換値を距離に変換(RF)
-float sensor_distance_convert_RF (int x);
-
-//AD変換値を距離に変換(LF)
-float sensor_distance_convert_LF (int x);
-
-//AD変換値を距離に変換(L)
-float sensor_distance_convert_L (int x);
-
-//AD変換値を距離に変換(R)
-float sensor_distance_convert_R (int x);
-
+//AD変換値を距離[mm]に変換(RF)
 float sensor_distance_convert_RF(int x)
 {
 	return 0.0038 * x * x - 1.3275 * x + 141.36;
 }
 
+//AD変換値を距離[mm]に変換(LF)
 float sensor_distance_convert_LF(int x)
 {
 	return 0.0031 * x * x - 1.1545 * x + 136.38;
 }
 
+//AD変換値を距離[mm]に変換(L)
 float sensor_distance_convert_L(int x)
 {
 	return 0.0025 * x * x - 0.9635 * x + 132.45;
 }
 
+//AD変換値を距離[mm]に変換(R)
 float sensor_distance_convert_R(int x)
 {
 	return 0.0023 * x * x - 0.9322 * x + 133.16;
@@ -91,16 +83,33 @@ volatile unsigned int Right_RotaryEncorder_val;
 
 unsigned int reference_right_encoder;
 unsigned int reference_left_encoder;
+
+//ホイールのパルス速度(負の場合もあるのでsignedで)
+volatile int pulse_velocity_left;
+volatile int pulse_velocity_right;
+
 	
 // センサ用割り込み
 ISR(TIMER1_COMPA_vect){
 	
-	Init_ADC_get();
+	static unsigned int previous_pulse_count_right = 0;
+	unsigned int current_pulse_count_right  = Right_RotaryEncorder_val;
+	
+	static unsigned int previous_pulse_count_left  = 0;
+	unsigned int current_pulse_count_left   = Left_RotaryEncorder_val;
+	
+	//この割り込み関数は100msごとに読み込まれるのでパルスの差を100msで割ることでパルス速度[pulse/s]を求めることができる
+	pulse_velocity_right = (current_pulse_count_right - previous_pulse_count_right) / 0.1;
+	pulse_velocity_left  = (current_pulse_count_left  - previous_pulse_count_left ) / 0.1;
+	
+	previous_pulse_count_right = Right_RotaryEncorder_val;
+	previous_pulse_count_left  = Left_RotaryEncorder_val;	
 	
 }
 
 // エンコーダ用割り込み
-ISR(TIMER3_COMPA_vect){
+ISR(TIMER3_COMPA_vect)
+{
 	
 	static int sensor_count = 0;
 	
@@ -113,6 +122,10 @@ ISR(TIMER3_COMPA_vect){
 	sensor_count++;
 	
 	encoder();
+	
+	motor_left(60);
+	motor_right(60);
+	
 	
 	/*//それぞれのAD変換値を距離[mm]に変換
 	sensor_distance_LF = sensor_distance_convert_LF(LeftFront_Sensor_val);
@@ -292,7 +305,7 @@ int main(void)
   //2:左モーターPWM
 	Init_Timer2();
   //1:センサ用
-	//Init_Timer1();
+	Init_Timer1();
   //3:エンコーダ読み取り+姿勢制御
 	Init_Timer3();
 	
@@ -305,7 +318,17 @@ int main(void)
 	
 	while(1){
 		
-		print_all_sensor();
+		lcd_pos(0,0);
+		lcd_str("L");
+		lcd_pos(0,2);
+		lcd_number(pulse_velocity_left, 5);
+		lcd_pos(1,0);
+		lcd_str("R");
+		lcd_pos(1,2);
+		lcd_number(pulse_velocity_right, 5);
+		lcd_pos(0,0);
+		
+		//print_all_sensor();
 		//print_RotaryEncorder();
 		//Print_ADC();
 		//switch_test();
@@ -446,7 +469,7 @@ void switch_test(void)
  *	Tittle			: タイマー1のレジスタ設定
  *	Input			:	なし
  *	Output			: なし
- *	Descripution	: タイマーのオーバーフローにより割り込みを発生させる
+ *	Descripution	: CTCモードで割り込みを発生させる
  *	ISR(TIMER1_OVF_vect)
  */
 void Init_Timer1(void)
@@ -464,7 +487,7 @@ void Init_Timer1(void)
 	//		#3 = 0, #2 = 0
 	//
 	//	1,0: PWM波形の種類の設定(下記のTCCR1Bにも設定が跨っているので注意)
-	//		WGM13=0, WGM12=0, WGM11=0, WGM10=0で通常動作(データシート p.84, 表16-5の番号4)
+	//		WGM13=0, WGM12=1, WGM11=0, WGM10=0で通常動作(データシート p.84, 表16-5の番号4)
 	//		#1 = 0, #0 = 0
 	//		TODO 設定が間違っているのに何故か動く
 	TCCR1A = 0b00000000;
@@ -482,17 +505,11 @@ void Init_Timer1(void)
 	//
 	//	2,1,0: 分周器設定
 	//		ATmega1284P-AUの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
-	//		分周は1/1024
-	//		20MHz/8 ==> 約2500kHz(0.4us)
-	//		#2 = 1, #1 = 0, #0 = 1
-	//
-	//		CTCがうまくいかなかったため
-	//		オーバーフロー割り込みに変更した。
-	//		ということなので
-	//		0.4*2^16 = 0.0262s(38Hz)
-	//		1秒間に38回サンプリングするがADCの仕組みから/4することになるので1個あたり1秒間に約10回になる
+	//		分周は1/64
+	//		20MHz/64 ==> 約312.5kHz(3.2us)
+	//		#2 = 0, #1 = 1, #0 = 1
 	//		
-	TCCR1B = 0b00000010;
+	TCCR1B = 0b00001011;
 	
 	//TCNT1(Timer Counter1)
 	//		タイマカウンタ(16bit)に直接アクセスできる
@@ -503,7 +520,13 @@ void Init_Timer1(void)
 	//OCR1A(Timer Counter1 Output Compare A Register)
 	//      いつコンペアマッチAをさせるかを設定する(16bit)
 	//
-	OCR1A = 0;
+	//		10ms間隔で割り込みを発生させ速度制御を行う
+	//		タイマの動作クロックはメインクロックを64分周しているので321.5kHz(3.2us)
+	//		100msを作りたいので
+	//		(100 * 10^-3) / (3.2 * 10^-6) = 3125
+	//
+	//
+	OCR1A = 31250;
 	
 	//OCR1B(Timer Counter1 Output Compare B Register)
 	//		いつコンペアマッチBをさせるかを設定する(16bit)
@@ -520,13 +543,13 @@ void Init_Timer1(void)
 	//		#2 = 0
 	//
 	//  1 : A比較の許可
-	//		使用しないので
-	//		#1 = 0
+	//		使用するので
+	//		#1 = 1
 	//
 	//	0 : 漏れ割り込み許可
-	//		使用するので
-	//		#0 = 1
-	TIMSK1 = 0b00000001;
+	//		使用しないので
+	//		#0 = 0
+	TIMSK1 = 0b00000010;
 }
 
 void Init_Timer3(void)
