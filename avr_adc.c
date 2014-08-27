@@ -4,13 +4,10 @@
  * Created: 2014/04/22 14:37:38
  *  Author: takemichi
  */
-
 #include <avr/io.h>
-#define F_CPU 20000000
 #include <avr/interrupt.h>
-#include <util/delay.h>
+#include "avr_tools.h"
 #include "avr_adc.h"
-
 
 volatile unsigned char Left_Sensor_val = 0;
 volatile unsigned char LeftFront_Sensor_val = 0;
@@ -18,26 +15,23 @@ volatile unsigned char RightFront_Sensor_val = 0;
 volatile unsigned char Right_Sensor_val = 0;
 volatile unsigned char adc_chanel = 0;
 
-
 ISR(ADC_vect){
-	
 	switch(adc_chanel){
-		
 		case 0:
-		RightFront_Sensor_val = ADCH;
-		break;
-		
+			RightFront_Sensor_val = ADCH;
+			break;
+
 		case 1:
-		LeftFront_Sensor_val = ADCH;
-		break;
+			LeftFront_Sensor_val = ADCH;
+			break;
 		
 		case 2:
-		Left_Sensor_val = ADCH;
-		break;
+			Left_Sensor_val = ADCH;
+			break;
 		
 		case 3:
-		Right_Sensor_val= ADCH;
-		break;
+			Right_Sensor_val= ADCH;
+			break;
 	}
 	
 	PORTA = 0b00000000;			//LED発光停止
@@ -47,65 +41,53 @@ ISR(ADC_vect){
 	if(adc_chanel == 4){
 		adc_chanel = 0;
 	}
-	
 }
 
 void Init_ADC_get(void)
 {
+	// TODO: 発行の順番があって無さそう？
 	const unsigned char LEDPORT[] = { 0b10000000, 0b00010000, 0b00100000, 0b01000000 };
+	// TODO: Init_ADCのADMUXと整合性がとれていない
 	const unsigned char MUXREG[]  = { 0b00100000, 0b00100001, 0b00100010, 0b00100011 };
 
-	
-
-	PORTA = LEDPORT[adc_chanel];			//LED(ch0)発行
+	PORTA = LEDPORT[adc_chanel];			//LED(ch0)発光
 	
 	ADMUX = MUXREG[adc_chanel];			//入力をch0に切り替え
 	_delay_us(50);						//切り替えが安定するまで待機
 
-	ADCSRA = 0b11001111;				//AD変換スタート		#6 = 1 にすると変換がスタートする
-
-	
+	sbi(ADCSRA, ADSC); //AD変換スタート		#6 = 1 にすると変換がスタートする
 }
 
 /*
  *
  *	Function Name :	Init_ADC
- *	Function Name :	Init_ADC														
- *	Titlle        : AD変換用レジスタの設定											
+ *	Title         : AD変換用レジスタの設定
  *  Input         :	ADC0, ADC1, ADC2, ADC3, ADC4, ADC5								
- *  output        :	なし																
+ *  Output        :	なし
  *	Description   :	通常動作モード
  *
  */
-
 void Init_ADC(void)
 {
 	/*
-	 * ADMUX(ADC Multiplexer Selct Register)
-	 *	
-	 *	7: リザーブビット
-	 *		#7 = 0
-	 *
-	 *	6: 基準電圧選択
-	 *		基準電圧としてVcc(5V)を使用する
-	 *		#6 = 0
+	 * ADMUX(ADC Multiplexer Selct Register, データシート p.162)
+	 *	7,6: 基準電圧選択
+	 *		基準電圧としてAVCC(5V)を使用する
+	 *		#7 = 0, #6 = 1
 	 *
 	 *	5: 変換結果を右寄せにするか左寄せにするかを設定する
 	 *		左寄せにする
 	 *		#5 = 1
 	 *
-	 *		4: リザーブビット
-	 *		#4 = 0
-	 *
-	 *	3,2,1,0: ADチャンネル選択
+	 *	4,3,2,1,0: ADチャンネル選択
 	 *		このビットをAD変換中にしても変換完了までは実行されない
 	 *		とりあえずADC0に設定
-	 *		#3 = 0, #2 = 0, #1 = 0, #0 = 0
+	 *		#4 = 0, #3 = 0, #2 = 0, #1 = 0, #0 = 0
 	 */
 	ADMUX = 0b01100000;
 	
 	/*
-	 * ADCSRA(ADC Control and Status Register A)
+	 * ADCSRA(ADC Control and Status Register A, データシート p.163)
 	 *	
 	 *	7: AD変換許可
 	 *		AD変換を許可する
@@ -121,7 +103,7 @@ void Init_ADC(void)
 	 *	4: AD変換完了割り込み要求フラグ
 	 *		AD変換が完了し結果のレジスタが更新されるとこのフラグが'1'になる
 	 *		とりあえず初期値を入力しておく
-	 *		#4 = 1
+	 *		#4 = 0
 	 *
 	 *	3: AD変換完了割り込み許可
 	 *		割り込みを使用する場合は'1'にしておく
@@ -134,7 +116,7 @@ void Init_ADC(void)
 	 *		20M/128 ==> 156kHzとする　分周は/φ128
 	 * 		#2 = 1, #1 = 1, #0 = 1
 	 */
-	ADCSRA = 0b10000111;
+	ADCSRA = 0b10001111;
 	
 	/*
 	 * ADCSRB(ADC Control and Status Register B)
@@ -147,7 +129,7 @@ void Init_ADC(void)
 	 *	5,4,3:	リザーブビット
 	 *		#5 = 0, #4 = 0, #3 = 0
 	 *
-	 *	2,1,0:	AD変換自動起動要因選択
+	 *	2,1,0:	AD変換自動起動要因選択 (データシートp.164, 表24-6)
 	 *		連続変換動作
 	 *		#2 = 0, #1 = 0, #0 = 0
 	 */
@@ -156,7 +138,7 @@ void Init_ADC(void)
 	/*
 	 * DIDR0(Digital Input Disable Register 0)
 	 *
-	 * 7,6,5,4,3,2,1,0: デジタル入力禁止
+   * デジタル入力を使用しないポートは消費電力削減のために1を書いて入力を禁止する
 	 *	
 	 */
 	DIDR0 = 0b00001111;

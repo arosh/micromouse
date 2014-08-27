@@ -33,8 +33,7 @@
  */
 
 #include <avr/io.h>
-#define F_CPU 20000000
-#include <util/delay.h>
+#include "avr_tools.h"
 #include "avr_lcd.h"
 
 //文字を全消去する
@@ -98,21 +97,20 @@ void lcd_init(void)
  */
 void lcd_out(int code, int rs)
 {
-	PORTC = (code & 0b11110000) | (PORTC & 0b00001100);		//PD2,3を使う場合に値が変わらないようにするための処置
+	PORTC = (code & 0b11110000) | (PORTC & 0b00001111);		//PD2,3を使う場合に値が変わらないようにするための処置
 	
 	if(rs == 0){
-		PORTC = code & 0b11111110;				//コマンドを送信する
+		cbi(PORTC, PC0); //コマンドを送信する
 	}
 	else{
-		PORTC = code | 0b00000001;				//データを送信する
+		sbi(PORTC, PC0); //データを送信する
 	}
 	
 	_delay_ms(1);
-	PORTC = PORTC | 0b00000010;					//Eのフラグを立てる
+	sbi(PORTC, PC1); //Eのフラグを立てる
 	_delay_ms(1);
-	PORTC = PORTC & 0b11111101;					//Eのフラグを戻す
+	cbi(PORTC, PC1); //Eのフラグを戻す
 }
-
 
 //コマンドを送信する
 void lcd_cmd(int cmd)							//4bitずつ送信
@@ -136,12 +134,16 @@ void lcd_data(int asci)							//4bitずつ送信
 //     lcd_number(321, 2) => 21
 //     lcd_number(321, 4) => 0321
 void lcd_number(unsigned int value, int digit) {
-  int i;
-  int base = 1;
-  for(i = 0; i < digit - 1; ++i) base *= 10;
-  for(i = 0; i < digit; ++i) {
-    lcd_data(0x30 + (value / base) % 10);
-    base /= 10;
-  }
+	int i;
+	unsigned int base = 1;
+
+	for(i = 0; i < digit - 1; ++i) {
+		base *= 10;
+	}
+
+	for(i = 0; i < digit; ++i) {
+		lcd_data(0x30 + (value / base) % 10);
+		base /= 10;
+	}
 }
 // vim: noet ts=4 sw=4 sts=0

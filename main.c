@@ -1,15 +1,14 @@
 /*
- * micromouse_ver0.c
+ * main.c
  *
  * Created: 2014/04/07 21:16:13
  *  Author: UEKI
  */
 #include <avr/io.h>
-#define F_CPU 20000000
-#include <util/delay.h>
 #include <avr/interrupt.h>
+#include "avr_tools.h"
 #include "avr_lcd.h"
-#include "avr_moter.h"
+#include "avr_motor.h"
 #include "avr_adc.h"
 #include <math.h>
 
@@ -76,7 +75,6 @@ volatile float sensor_distance_RF;
 volatile float sensor_distance_L;
 volatile float sensor_distance_R;
 
-
 //ロータリーエンコーダの値を格納する変数
 volatile unsigned int Left_RotaryEncorder_val;
 volatile unsigned int Right_RotaryEncorder_val;
@@ -91,7 +89,7 @@ volatile int pulse_velocity_right;
 	
 // センサ用割り込み
 ISR(TIMER1_COMPA_vect){
-	
+
 	static unsigned int previous_pulse_count_right = 0;
 	unsigned int current_pulse_count_right  = Right_RotaryEncorder_val;
 	
@@ -111,13 +109,12 @@ ISR(TIMER1_COMPA_vect){
 ISR(TIMER3_COMPA_vect)
 {
 	
+
 	static int sensor_count = 0;
 	
 	if(sensor_count >= 250){
-		
 		Init_ADC_get();
 		sensor_count = 0;
-		
 	}
 	sensor_count++;
 	
@@ -177,9 +174,6 @@ ISR(TIMER3_COMPA_vect)
 	
 	//ターンフラグが立っているとき
 	else{
-		
-		
-		
 		//ターンをする
 		reference_right_encoder = Right_RotaryEncorder_val - 190;
 		reference_left_encoder  = Left_RotaryEncorder_val + 190;
@@ -198,24 +192,17 @@ ISR(TIMER3_COMPA_vect)
 		
 		//
 		if( reference_left_encoder >  Left_RotaryEncorder_val){
-			
 			//前壁があるとき
 			if(sensor_distance_LF_RF_AVE < 60){
-				
 				turn_flag = 1;
-				
 			}
 			//前壁がないとき
 			else{
-				
 				turn_flag = 0;
-				
 			}
 		}
 	}
 	*/
-	
-	
 }
 
 int main(void)
@@ -223,21 +210,23 @@ int main(void)
 	cli();		//割り込み禁止
 	
 	/*
-	 * 簡単なPORTの説明
+	 * 簡単なPORTの説明(x:アルファベットABCD n:数字0123...)
 	 *
-	 * DDR_  方向レジスタ(0:入力 1:出力)
-	 * PORT_ 出力レジスタ(入力の場合 0:プルアップ禁止 1:プルアップ有効)
+	 * DDRx  方向レジスタ(0:入力 1:出力)
+	 * PORTx 出力レジスタ(入力の場合 0:プルアップ禁止 1:プルアップ有効)
 	 *					 (出力の場合 0:Low 1:High)
+	 * PINx  入力レジスタ
 	 *
 	 */
 	
 	/*
 	 *	PORTA
 	 *
-	 * 0: 右前センサ(右)ADC入力
+	 * 0: 右前センサADC入力
 	 * 1: 右センサADC入力
 	 * 2: 左センサADC入力
-	 * 3: 右前センサ(左)ADC入力
+	 * 3: 左前センサADC入力
+	 *
 	 * 4: 左前センサのLED制御
 	 * 5: 左センサのLED制御
 	 * 6: 右センサのLED制御
@@ -300,9 +289,9 @@ int main(void)
 	lcd_init();
 	
 	//タイマレジスタ設定
-  //0:右モーターPWM
+	//0:右モーターPWM
 	Init_Timer0();
-  //2:左モーターPWM
+	//2:左モーターPWM
 	Init_Timer2();
   //1:センサ用
 	Init_Timer1();
@@ -339,41 +328,37 @@ int main(void)
 
 void beep(void)
 {
-	PORTB = PORTB | _BV(PB0);
+	sbi(PORTB, PB0);
 	_delay_ms(1500);
-	PORTB ^= _BV(PB0);
+	cbi(PORTB, PB0);
 }
 
 void beep_start(void)
 {
-	PORTB = PORTB | _BV(PB0);
+	sbi(PORTB, PB0);
 }
 
 void beep_end(void)
 {
-	PORTB ^= _BV(PB0);
+	cbi(PORTB, PB0);
 }
 
 void encoder(void)
 {
-	static const int dir_right[] = {								
+	static const int dir_right[] = {
 		0, 1, -1, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, -1, 1, 0
 	};
 	static const int dir_left[] = {
 		0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0
 	};
 	
-	static unsigned int left = 0, right = 0;
-	int m,n;
+	static unsigned char left = 0, right = 0;
 	
-	right = (right << 2) + ((PIND >> 2) & 0b00000011);
-	left  = (left << 2) + ((PINC >> 2)  & 0b00000011);
+	right = (right << 2) + ((PIND >> 2) & 0b00000011); // PORTDの#3と#2
+	left  = (left << 2)  + ((PINC >> 2) & 0b00000011); // PORTCの#3と#2
 	
-	m = dir_left[left & 15];
-	n = dir_right[right & 15];
-	
-	Left_RotaryEncorder_val  += m;	
-	Right_RotaryEncorder_val += n;
+	Left_RotaryEncorder_val  += dir_left[left & 0b00001111];
+	Right_RotaryEncorder_val += dir_right[right & 0b00001111];
 }
 
 //各センサの値とロータリーエンコーダのカウント数を同時にLCDに表示
@@ -431,7 +416,7 @@ void Print_ADC(void)
 }
 
 void print_RotaryEncorder(void)
-{	
+{
 	lcd_str("rotary encorder");
 	
 	lcd_pos(1,0);
@@ -572,7 +557,7 @@ void Init_Timer3(void)
 	TCCR3A = 0b00000000;
 	
 	//TCCR3B(Timer Counter3 Control register B)
-	//	7,6: ICNC3, ICES3 捕獲機道入力という謎の機能 (データシート p.82)
+	//	7,6: ICNC3, ICES3 捕獲起動入力という謎の機能 (データシート p.82)
 	//		今回は使用しない
 	//		#7 = 0, #6 = 0
 	//
@@ -592,8 +577,6 @@ void Init_Timer3(void)
 	//TCNT3(Timer Counter3)
 	//		タイマカウンタ(16bit)に直接アクセスできる
 	//		初期値をいれる
-	//		今回は使用ない
-	//
 	TCNT3 = 0;
 	
 	//OCR3A(Timer Counter3 Output Compare A Register)
@@ -604,7 +587,7 @@ void Init_Timer3(void)
 	//		大きくなってはいけないので今回のサンプリング周波数は10kHz(100us)とする
 	//		1クロックが312.5KHz(3.2us)なので
 	//		100u / 3.2u = 31.25 今回は31にする
-	
+	//
 	//		また同時に距離センサの割り込みを行う
 	//		データシートのAD変換のところを見ると、
 	//		変換時間は13-260us(50k-1MHz)と書いてある。
@@ -624,19 +607,17 @@ void Init_Timer3(void)
 	//		いつコンペアマッチBをさせるかを設定する(16bit)
 	//		だいたい40Hz(0.025s)位(1個当たり1秒間に10サンプリング)すればいいと思うので
 	//		0.025s / (3.2 * 10^-6) = 7812.5なので、今回は7812とする。
-	//
-	//
-	//
 	OCR3B = 0;
 
 	//TIMSK3(Timer Counter 3 Interrupt Mask Register)
 	//		タイマ割り込みを許可するためのレジスタ
-	//	7,6,5,4,3: リザーブビット
-	//		#7-3 = 0
 	//
-	//  2 : B比較の許可
-	//		使用しないので
-	//		#2 = 0
+	//	7-3: リザーブビット
+	//		 #7-3 = 0
+	//
+	//  2  : B比較の許可
+	//		 使用しないので
+	//		 #2 = 0
 	//
 	//  1 : A比較の許可
 	//		使用するので

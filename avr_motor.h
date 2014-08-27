@@ -1,5 +1,5 @@
 /*
- * avr_moter.h
+ * avr_motor.h
  *
  * Created: 2014/04/18 20:21:16
  *  Author: UEKI
