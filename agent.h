@@ -1,6 +1,8 @@
 #ifndef AGENT_H_
 #define AGENT_H_
 
+#include <stdint.h>
+
 // マップに関するパラメータ
 #define MAP_SIZE 16
 
@@ -25,6 +27,6 @@ void agent_init(void);
 void agent_learn(void);
 
 // 探索走行のために、次に行うべきアクションを考える
-action_t agent_explore(void);
+enum action_t agent_explore(void);
 
 #endif /* AVR_LCD_H_ */
