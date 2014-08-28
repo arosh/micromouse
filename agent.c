@@ -42,6 +42,22 @@ static inline uint8_t check_pos(const int y, const int x) {
 
 static const int dy[] = { -1, 0, 1, 0 };
 static const int dx[] = { 0, -1, 0, 1 };
+static uint8_t d[MAP_SIZE][MAP_SIZE];
+
+// ceil(size*size/8)
+static uint8_t vis[(MAP_SIZE*MAP_SIZE+8-1)/8];
+
+static inline uint8_t vis_get(const int y, const int x) {
+  return (vis[(y*size + x) / 8] >> ((y*size + x) % 8)) & UINT8_C(1);
+}
+
+static inline void vis_set(const int y, const int x) {
+  vis[(y*size + x) / 8] |=  (UINT8_C(1) << ((y*size + x) % 8));
+}
+
+static inline void vis_reset(const int y, const int x) {
+  vis[(y*size + x) / 8] &= ~(UINT8_C(1) << ((y*size + x) % 8));
+}
 
 static int curY, curX, dir;
 
@@ -69,11 +85,46 @@ void agent_init(void) {
 }
 
 enum action_t agent_explore(void) {
-  assert(false);
 }
 
 void agent_learn(void) {
-  assert(false);
+  // 既に学習済みならセンサーから値を取り込まない
+  if(get_visible(curY, curX)) return;
+
+  set_visible(curY, curX);
+  uint8_t sensor_data = sensor_get();
+  for(int k = 0; k < 4; ++k) {
+    // 後ろのセンサーは付いていないので
+    if(k == 2) continue;
+
+    int ndir = (dir + k) % 4;
+    if((sensor_data >> k) & 1) {
+      set_wall(curY, curX, ndir);
+    }
+    else {
+      reset_wall(curY, curX, ndir);
+    }
+
+    int ny = curY + dy[ndir];
+    int nx = curX + dx[ndir];
+    if(check_pos(ny, nx)) {
+      wall[ny, nx, (ndir + 2) % 4] = wall[curY, curX, ndir];
+
+      if(get_visible(ny, nx) == false) {
+        int n = 0;
+        for(int l = 0; l < 4; ++l) {
+          int my = ny + dy[l];
+          int mx = nx + dx[l];
+          if(check_pos(my, mx) == false || get_visible(my, mx)) {
+            ++n;
+          }
+        }
+        if(n == 4) {
+          set_visible(ny, nx);
+        }
+      }
+    }
+  }
 }
 
 #if TEST
