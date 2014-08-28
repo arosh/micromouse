@@ -64,6 +64,19 @@ float sensor_distance_convert_R(int x)
 	return 0.0023 * x * x - 0.9322 * x + 133.16;
 }
 
+//パルス速度をPWMに変換(右)
+int pulsevelocity_PWM_convert_R(int x)
+{
+	return 0.0228 * x + 12.783;
+}
+
+//パルス速度をPWMに変換(左)
+int pulsevelocity_PWM_convert_L(int x)
+{
+	return 0.025 * x + 11.967;
+}
+
+
 //各センサ値を格納する変数
 extern volatile unsigned char Left_Sensor_val;
 extern volatile unsigned char LeftFront_Sensor_val;
@@ -76,8 +89,8 @@ volatile float sensor_distance_L;
 volatile float sensor_distance_R;
 
 //ロータリーエンコーダの値を格納する変数
-volatile unsigned int Left_RotaryEncorder_val;
-volatile unsigned int Right_RotaryEncorder_val;
+volatile long int Left_RotaryEncorder_val  = 0;
+volatile long int Right_RotaryEncorder_val = 0;
 
 unsigned int reference_right_encoder;
 unsigned int reference_left_encoder;
@@ -89,19 +102,62 @@ volatile int pulse_velocity_right;
 	
 // センサ用割り込み
 ISR(TIMER1_COMPA_vect){
-
-	static unsigned int previous_pulse_count_right = 0;
-	unsigned int current_pulse_count_right  = Right_RotaryEncorder_val;
 	
-	static unsigned int previous_pulse_count_left  = 0;
-	unsigned int current_pulse_count_left   = Left_RotaryEncorder_val;
+	static int previous_pulse_count_right = 0;
+	int current_pulse_count_right  = Right_RotaryEncorder_val;
 	
-	//この割り込み関数は100msごとに読み込まれるのでパルスの差を100msで割ることでパルス速度[pulse/s]を求めることができる
-	pulse_velocity_right = (current_pulse_count_right - previous_pulse_count_right) / 0.1;
-	pulse_velocity_left  = (current_pulse_count_left  - previous_pulse_count_left ) / 0.1;
+	static int previous_pulse_count_left  = 0;
+	int current_pulse_count_left   = Left_RotaryEncorder_val;
+	
+	//この割り込み関数は10msごとに読み込まれるのでパルスカウントの差を10ms[0.01s]で割ることでパルス速度[pulse/s]を求めることができる
+	pulse_velocity_right = (current_pulse_count_right - previous_pulse_count_right) / 0.01;
+	pulse_velocity_left  = (current_pulse_count_left  - previous_pulse_count_left ) / 0.01;
 	
 	previous_pulse_count_right = Right_RotaryEncorder_val;
-	previous_pulse_count_left  = Left_RotaryEncorder_val;	
+	previous_pulse_count_left  = Left_RotaryEncorder_val;
+	
+	//それぞれのAD変換値を距離[mm]に変換
+	sensor_distance_LF = sensor_distance_convert_LF(LeftFront_Sensor_val);
+	sensor_distance_RF = sensor_distance_convert_RF(RightFront_Sensor_val);
+	sensor_distance_L  = sensor_distance_convert_L(Left_Sensor_val);
+	sensor_distance_R  = sensor_distance_convert_R(Right_Sensor_val);
+	
+	//速度の誤差にかけるゲイン
+	const float KP_straight_right = 0.05;
+	const float KP_straight_left  = 0.05;
+	
+	//左右の移動量の誤差にかけるゲイン
+	const float KP_movement_right = 0.20;
+	const float KP_movement_left  = 0.20;
+	
+	//左右のホイールの移動量
+	long int movement_right = 0; 
+	long int movement_left  = 0;
+	movement_right += pulse_velocity_right;
+	movement_left  += pulse_velocity_left;
+	
+	//目標パルス速度
+	const int preferrance_pluse_velocity_right = 1500;
+	const int preferrance_pluse_velocity_left  = 1500;
+	
+	//目標パルス速度と現在のパルス速度の誤差
+	int errer_straight_left  = preferrance_pluse_velocity_left  - pulse_velocity_left;
+	int errer_straight_right = preferrance_pluse_velocity_right - pulse_velocity_right;
+	
+	//目標パルス速度にするための制御量
+	int control_straight_right = (int)(KP_straight_right * errer_straight_right);
+	int control_straight_left  = (int)(KP_straight_left * errer_straight_left);
+	
+	//左右の移動量の誤差
+	int errer_movement_left  = movement_right - movement_left;
+	int errer_movement_right = movement_right - movement_left;
+	
+	//左右の壁の誤差に対する制御量
+	int control_movement_right = (int)(KP_movement_right * errer_movement_right);
+	int control_movement_left  = (int)(KP_movement_left  * errer_movement_left);
+	
+	motor_right(pulsevelocity_PWM_convert_R(1500) + control_straight_right + control_movement_right);
+	motor_left(pulsevelocity_PWM_convert_L(1500)  + control_straight_left  + control_movement_left);
 	
 }
 
@@ -109,7 +165,6 @@ ISR(TIMER1_COMPA_vect){
 ISR(TIMER3_COMPA_vect)
 {
 	
-
 	static int sensor_count = 0;
 	
 	if(sensor_count >= 250){
@@ -119,17 +174,8 @@ ISR(TIMER3_COMPA_vect)
 	sensor_count++;
 	
 	encoder();
-	
-	motor_left(60);
-	motor_right(60);
-	
-	
-	/*//それぞれのAD変換値を距離[mm]に変換
-	sensor_distance_LF = sensor_distance_convert_LF(LeftFront_Sensor_val);
-	sensor_distance_RF = sensor_distance_convert_RF(RightFront_Sensor_val);
-	sensor_distance_L  = sensor_distance_convert_L(Left_Sensor_val);
-	sensor_distance_R  = sensor_distance_convert_R(Right_Sensor_val);
- 	
+
+	/*
 	//前壁検知のためにフロントのセンサの平均値をとる
 	float sensor_distance_LF_RF_AVE = (sensor_distance_LF + sensor_distance_RF) * 0.5;
 	
@@ -293,9 +339,9 @@ int main(void)
 	Init_Timer0();
 	//2:左モーターPWM
 	Init_Timer2();
-  //1:センサ用
+	//1:センサ用
 	Init_Timer1();
-  //3:エンコーダ読み取り+姿勢制御
+	//3:エンコーダ読み取り+姿勢制御
 	Init_Timer3();
 	
 	//AD変換レジスタ設定
@@ -308,13 +354,13 @@ int main(void)
 	while(1){
 		
 		lcd_pos(0,0);
-		lcd_str("L");
-		lcd_pos(0,2);
-		lcd_number(pulse_velocity_left, 5);
-		lcd_pos(1,0);
 		lcd_str("R");
-		lcd_pos(1,2);
+		lcd_pos(0,2);
 		lcd_number(pulse_velocity_right, 5);
+		lcd_pos(1,0);
+		lcd_str("L");
+		lcd_pos(1,2);
+		lcd_number(pulse_velocity_left, 5);
 		lcd_pos(0,0);
 		
 		//print_all_sensor();
@@ -369,6 +415,7 @@ void print_all_sensor(void)
 	sensor_distance_L  = (int)sensor_distance_convert_L(Left_Sensor_val);
 	sensor_distance_R  = (int)sensor_distance_convert_R(Right_Sensor_val);
 	
+	
 	lcd_pos(0,0);
 	lcd_number(Right_RotaryEncorder_val, 5);
 	
@@ -393,24 +440,19 @@ void print_all_sensor(void)
 //各センサの値をLCDに表示
 void Print_ADC(void)
 {
-	sensor_distance_LF = (int)sensor_distance_convert_LF(LeftFront_Sensor_val);
-	sensor_distance_RF = (int)sensor_distance_convert_RF(RightFront_Sensor_val);
-	sensor_distance_L  = (int)sensor_distance_convert_L(Left_Sensor_val);
-	sensor_distance_R  = (int)sensor_distance_convert_R(Right_Sensor_val);
-	
 	lcd_str("RF  LF  L   R");
 	
 	lcd_pos(1,0);
-	lcd_number(sensor_distance_RF, 3);
+	lcd_number(RightFront_Sensor_val, 3);
 	
 	lcd_pos(1,4);
-	lcd_number(sensor_distance_LF, 3);
+	lcd_number(LeftFront_Sensor_val, 3);
 	
 	lcd_pos(1,8);
-	lcd_number(sensor_distance_L, 3);
+	lcd_number(Left_Sensor_val, 3);
 	
 	lcd_pos(1,12);
-	lcd_number(sensor_distance_R, 3);
+	lcd_number(Right_Sensor_val, 3);
 	
 	lcd_pos(0,0);
 }
@@ -474,7 +516,6 @@ void Init_Timer1(void)
 	//	1,0: PWM波形の種類の設定(下記のTCCR1Bにも設定が跨っているので注意)
 	//		WGM13=0, WGM12=1, WGM11=0, WGM10=0で通常動作(データシート p.84, 表16-5の番号4)
 	//		#1 = 0, #0 = 0
-	//		TODO 設定が間違っているのに何故か動く
 	TCCR1A = 0b00000000;
 	
 	//TCCR1B(Timer Counter1 Control register B)
@@ -507,11 +548,11 @@ void Init_Timer1(void)
 	//
 	//		10ms間隔で割り込みを発生させ速度制御を行う
 	//		タイマの動作クロックはメインクロックを64分周しているので321.5kHz(3.2us)
-	//		100msを作りたいので
-	//		(100 * 10^-3) / (3.2 * 10^-6) = 3125
+	//		10msを作りたいので
+	//		(10 * 10^-3) / (3.2 * 10^-6) = 3125
 	//
 	//
-	OCR1A = 31250;
+	OCR1A = 3125;
 	
 	//OCR1B(Timer Counter1 Output Compare B Register)
 	//		いつコンペアマッチBをさせるかを設定する(16bit)

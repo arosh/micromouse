@@ -55,7 +55,10 @@ void Init_ADC_get(void)
 	ADMUX = MUXREG[adc_chanel];			//入力をch0に切り替え
 	_delay_us(50);						//切り替えが安定するまで待機
 
-	sbi(ADCSRA, ADSC); //AD変換スタート		#6 = 1 にすると変換がスタートする
+	ADCSRA = 0b11001111;
+	
+	//sbi()が機能していない可能性が
+	//sbi(ADCSRA, ADSC); //AD変換スタート		#6 = 1 にすると変換がスタートする
 }
 
 /*
