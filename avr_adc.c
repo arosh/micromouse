@@ -9,6 +9,7 @@
 #include "avr_tools.h"
 #include "avr_adc.h"
 
+//変数の共有化がavr_adc.hでされているので実体化させる。
 volatile unsigned char Left_Sensor_val = 0;
 volatile unsigned char LeftFront_Sensor_val = 0;
 volatile unsigned char RightFront_Sensor_val = 0;
