@@ -87,9 +87,6 @@ volatile float sensor_distance_R;
 volatile long int Left_RotaryEncorder_val  = 0;
 volatile long int Right_RotaryEncorder_val = 0;
 
-unsigned int reference_right_encoder;
-unsigned int reference_left_encoder;
-
 //ホイールのパルス速度(負の場合もあるのでsignedで)
 volatile int pulse_velocity_left;
 volatile int pulse_velocity_right;
@@ -100,9 +97,7 @@ volatile char prefrance_flag;
 volatile long int preferrance_turn_right = 0;
 volatile long int preferrance_turn_left  = 0;
 
-volatile int error_turn_right;
-volatile int error_turn_left;
-
+volatile char turn_right_flag  = 1;	// 1なら右回転	-1なら左回転
 
 // センサ用割り込み
 ISR(TIMER1_COMPA_vect){
@@ -194,15 +189,13 @@ ISR(TIMER1_COMPA_vect){
 	
 	//90度回転に必要な変数達--------------------------------------------------------------------------
 	
-	char turn_right_flag  = 1;	// 1なら右回転	-1なら左回転
-	
 	const float Kp_turn_right = 0.5;
 	const float Kp_turn_left  = 0.5;
 	const float Kd_turn_right = 0.1;
 	const float Kd_turn_left  = 0.1;
 	
-	//int error_turn_right;
-	//int error_turn_left;
+	int error_turn_right;
+	int error_turn_left;
 	
 	static int old_error_turn_right = 0;
 	static int old_error_turn_left  = 0;
@@ -243,7 +236,7 @@ ISR(TIMER1_COMPA_vect){
 		
 		//ターンの最初目標位置を設定する
 		if(prefrance_flag == 1){
-				
+			
 			preferrance_turn_right = Right_RotaryEncorder_val + (-turn_right_flag * 180);		//タイヤ間円の円周の1/4がパルスカウントの180と一致する
 			preferrance_turn_left  = Left_RotaryEncorder_val  + (turn_right_flag  * 180);
 			
@@ -277,7 +270,6 @@ ISR(TIMER1_COMPA_vect){
 			//前に壁がなければフラグを消す
 			else{
 				turn_flag = 0;
-				turn_right_flag = -1;
 			}
 		}
 	}
@@ -401,27 +393,27 @@ int main(void)
 	
 	while(1){
 		
-		lcd_pos(0,0);
-		lcd_str("turn");
-		lcd_pos(0,6);
-		lcd_number(turn_flag, 1);
-		lcd_pos(0,8);
-		lcd_str("pre");
-		lcd_pos(0,12);
-		lcd_number(prefrance_flag, 1);
-		lcd_pos(1,0);
-		lcd_number(error_turn_left,5);
-		lcd_pos(1,6);
-		if(error_turn_right < 0) {
-			lcd_str("-");
-		}
-		lcd_pos(1,7);
-		lcd_number(abs(error_turn_right),5);
-		lcd_pos(0,0);
+		//lcd_pos(0,0);
+		//lcd_str("turn");
+		//lcd_pos(0,6);
+		//lcd_number(turn_flag, 1);
+		//lcd_pos(0,8);
+		//lcd_str("pre");
+		//lcd_pos(0,12);
+		//lcd_number(prefrance_flag, 1);
+		//lcd_pos(1,0);
+		//lcd_number(error_turn_left,5);
+		//lcd_pos(1,6);
+		//if(error_turn_right < 0) {
+			//lcd_str("-");
+		//}
+		//lcd_pos(1,7);
+		//lcd_number(abs(error_turn_right),5);
+		//lcd_pos(0,0);
+		//
 		
 		
-		
-		//print_all_sensor();
+		print_all_sensor();
 		//print_RotaryEncorder();
 		//Print_ADC();
 		//switch_test();
