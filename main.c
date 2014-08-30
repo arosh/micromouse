@@ -97,24 +97,26 @@ volatile char prefrance_flag;
 volatile long int preferrance_turn_right = 0;
 volatile long int preferrance_turn_left  = 0;
 
-volatile char turn_right_flag  = 1;	// 1なら右回転	-1なら左回転
+volatile int error_turn_right;
+volatile int error_turn_left;
+
+volatile char turn_select = 1;	// 1なら右回転	-1なら左回転
 
 // センサ用割り込み
 ISR(TIMER1_COMPA_vect){
 	
-		//パルス速度を求める----------------------------------------------------------------
-		static int previous_pulse_count_right = 0;
-		int current_pulse_count_right  = Right_RotaryEncorder_val;
+	//パルス速度を求める----------------------------------------------------------------
+	static int previous_pulse_count_right = 0;
+	int current_pulse_count_right  = Right_RotaryEncorder_val;
+	static int previous_pulse_count_left  = 0;
+	int current_pulse_count_left   = Left_RotaryEncorder_val;
 	
-		static int previous_pulse_count_left  = 0;
-		int current_pulse_count_left   = Left_RotaryEncorder_val;
+	//この割り込み関数は10msごとに読み込まれるのでパルスカウントの差を10ms[0.01s]で割ることでパルス速度[pulse/s]を求めることができる
+	pulse_velocity_right = (current_pulse_count_right - previous_pulse_count_right) / 0.01;
+	pulse_velocity_left  = (current_pulse_count_left  - previous_pulse_count_left ) / 0.01;
 	
-		//この割り込み関数は10msごとに読み込まれるのでパルスカウントの差を10ms[0.01s]で割ることでパルス速度[pulse/s]を求めることができる
-		pulse_velocity_right = (current_pulse_count_right - previous_pulse_count_right) / 0.01;
-		pulse_velocity_left  = (current_pulse_count_left  - previous_pulse_count_left ) / 0.01;
-	
-		previous_pulse_count_right = Right_RotaryEncorder_val;
-		previous_pulse_count_left  = Left_RotaryEncorder_val;
+	previous_pulse_count_right = Right_RotaryEncorder_val;
+	previous_pulse_count_left  = Left_RotaryEncorder_val;
 	
 	
 	
@@ -130,8 +132,8 @@ ISR(TIMER1_COMPA_vect){
 	//等速制御に必要な変数達------------------------------------------------------------
 	
 	//速度の誤差にかけるゲイン
-	const float Kp_velocity_right = 0.09;
-	const float Kp_velocity_left  = 0.09;
+	const float Kp_velocity_right = 0.08;
+	const float Kp_velocity_left  = 0.08;
 	
 	//左右の移動量の誤差にかけるゲイン
 	const float Kp_movement_right = 2.5;
@@ -141,30 +143,25 @@ ISR(TIMER1_COMPA_vect){
 	static long int movement_right = 0; 
 	static long int movement_left  = 0;
 	
-	if(turn_flag == 0){
-		movement_right += pulse_velocity_right * 0.01;
-		movement_left  += pulse_velocity_left  * 0.01;
-	}
-	
 	//目標パルス速度
 	const int preferrance_pluse_velocity_right = 1600;
 	const int preferrance_pluse_velocity_left  = 1600;
 	
 	//目標パルス速度と現在のパルス速度の誤差
-	int error_velocity_left  = preferrance_pluse_velocity_left  - pulse_velocity_left;
-	int error_velocity_right = preferrance_pluse_velocity_right - pulse_velocity_right;
-	
-	//目標パルス速度にするための制御量
-	int control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
-	int control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
+	int error_velocity_left;
+	int error_velocity_right;
 	
 	//左右の移動量の誤差
-	int error_movement_left  = movement_right - movement_left;
-	int error_movement_right = movement_left - movement_right;
+	int error_movement_left;
+	int error_movement_right;
+	
+	//目標パルス速度にするための制御量
+	int control_velocity_right;
+	int control_velocity_left;
 	
 	//左右の壁の誤差に対する制御量
-	int control_movement_right = (int)(Kp_movement_right * error_movement_right);
-	int control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
+	int control_movement_right;
+	int control_movement_left;
 	
 	
 	
@@ -174,34 +171,50 @@ ISR(TIMER1_COMPA_vect){
 	//const char stop_masu = 2;
 	//int movement = stop_masu * 608;		//一区画:180mm タイヤ直径:37.7mm タイヤ1回転のパルス数:400  180*400/(37.7*pi)=607.9 
 	
-	const float Kp_down_right = 0.3;
-	const float Kp_down_left  = 0.3;
+	const float Kp_down_right = 0.5;
+	const float Kp_down_left  = 0.5;
+	const float Ki_down_right = 0.01;
+	const float Ki_down_left  = 0.01;
 	
-	const char prefarance_sensor_right = 50;
-	const char prefarance_sensor_left  = 50;
+	static int I_sum_down_right = 0;
+	static int I_sum_down_left  = 0;
 	
-	int error_sensor_right = prefarance_sensor_right - sensor_distance_RF;
-	int error_sensor_left  = prefarance_sensor_left  - sensor_distance_LF;
+	const char prefarance_sensor_right = 55;
+	const char prefarance_sensor_left  = 55; 
 	
-	int control_down_right = (Kp_down_right * error_sensor_right);
-	int control_down_left  = (Kp_down_left  * error_sensor_left); 
+	int error_sensor_right;
+	int error_sensor_left;
+	
+	int P_control_down_right;
+	int P_control_down_left;
+	
+	int I_control_down_right;
+	int I_control_down_left;
 	
 	
 	//90度回転に必要な変数達--------------------------------------------------------------------------
 	
-	const float Kp_turn_right = 0.5;
-	const float Kp_turn_left  = 0.5;
-	const float Kd_turn_right = 0.1;
-	const float Kd_turn_left  = 0.1;
+	const float Kp_turn_right = 0.40;
+	const float Kp_turn_left  = 0.40;
+	const float Ki_turn_right = 0.005;
+	const float Ki_turn_left  = 0.005;
+	const float Kd_turn_right = 0;
+	const float Kd_turn_left  = 0;
 	
-	int error_turn_right;
-	int error_turn_left;
+	//int error_turn_right;
+	//int error_turn_left;
 	
 	static int old_error_turn_right = 0;
-	static int old_error_turn_left  = 0;
+	static int old_error_turn_left = 0;
+	
+	static int i_sum_turn_right = 0;
+	static int i_sum_turn_left  = 0;
 	
 	int P_control_turn_right;
 	int P_control_turn_left;
+	
+	int I_control_turn_right;
+	int I_control_turn_left;
 	
 	int D_control_turn_right;
 	int D_control_turn_left;
@@ -211,23 +224,57 @@ ISR(TIMER1_COMPA_vect){
 	//ターンしない
 	if(turn_flag == 0){
 		
+		movement_right += pulse_velocity_right * 0.01;
+		movement_left  += pulse_velocity_left  * 0.01;
+		
 		//前の壁がないとき前進
 		if(sensor_distance_AVE_LF_RF >= 95){
+			
+			//左右の速度の誤差
+			error_velocity_left  = preferrance_pluse_velocity_left  - pulse_velocity_left;
+			error_velocity_right = preferrance_pluse_velocity_right - pulse_velocity_right;
+			
+			//左右の移動量の誤差
+			error_movement_left  = movement_right - movement_left;
+			error_movement_right = movement_left - movement_right;
+			
+			//目標パルス速度にするための制御量
+			control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
+			control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
+			
+			//左右の壁の誤差に対する制御量
+			control_movement_right = (int)(Kp_movement_right * error_movement_right);
+			control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
 			
 			motor_right(control_velocity_right + control_movement_right);
 			motor_left(control_velocity_left  + control_movement_left);
 		
 		}
-		//しばらくすると前に壁があるので減速し、停止し、ターンフラグを立てる
+		//しばらくすると前に壁があるので減速(目標値に近づける)し、停止し、ターンフラグを立てる
 		else{
 			
-			motor_right(-control_down_right);
-			motor_left(-control_down_left);
+			error_sensor_right = abs(prefarance_sensor_right - sensor_distance_RF);
+			error_sensor_left  = abs(prefarance_sensor_left  - sensor_distance_LF);
+			
+			I_sum_down_right += error_sensor_right;
+			I_sum_down_left  += error_sensor_left;
+			
+			P_control_down_right = (int)(Kp_down_right * error_sensor_right);
+			P_control_down_left  = (int)(Kp_down_left  * error_sensor_left);
+			
+			I_control_down_right = (int)(Ki_down_right * I_sum_down_right);
+			I_control_down_left  = (int)(Ki_down_left  * I_sum_down_left);
+			
+			motor_right(P_control_down_right + I_control_down_right);
+			motor_left(P_control_down_left + I_control_down_left);
 			
 			if((pulse_velocity_left == 0) && (pulse_velocity_right == 0)){
 				
 				turn_flag = 1;
 				prefrance_flag = 1;
+				I_sum_down_left  = 0;
+				I_sum_down_right = 0;
+				
 			}
 		}
 	}
@@ -237,8 +284,8 @@ ISR(TIMER1_COMPA_vect){
 		//ターンの最初目標位置を設定する
 		if(prefrance_flag == 1){
 			
-			preferrance_turn_right = Right_RotaryEncorder_val + (-turn_right_flag * 180);		//タイヤ間円の円周の1/4がパルスカウントの180と一致する
-			preferrance_turn_left  = Left_RotaryEncorder_val  + (turn_right_flag  * 180);
+			preferrance_turn_right = Right_RotaryEncorder_val + (-turn_select * 180);		//タイヤ間円の円周の1/4がパルスカウントの180と一致する
+			preferrance_turn_left  = Left_RotaryEncorder_val  + (turn_select  * 180);
 			
 			prefrance_flag = 0;
 		
@@ -247,14 +294,20 @@ ISR(TIMER1_COMPA_vect){
 		error_turn_right = preferrance_turn_right - Right_RotaryEncorder_val;
 		error_turn_left  = preferrance_turn_left  - Left_RotaryEncorder_val;
 		
+		i_sum_turn_left  += error_turn_left;
+		i_sum_turn_right += error_turn_right;
+		
 		P_control_turn_right = (int)(Kp_turn_right * error_turn_right);
 		P_control_turn_left  = (int)(Kp_turn_left  * error_turn_left);
 		
-		D_control_turn_right = (int)(Kd_turn_right * (error_turn_right - old_error_turn_right));
-		D_control_turn_left = (int)(Kd_turn_left  * (error_turn_left  - old_error_turn_left));
+		I_control_turn_right = (int)(Ki_turn_right * i_sum_turn_right);
+		I_control_turn_left  = (int)(Ki_turn_left  * i_sum_turn_left);
 		
-		motor_right(P_control_turn_right + D_control_turn_right);
-		motor_left(P_control_turn_left + D_control_turn_left);
+		D_control_turn_right = (int)(Kd_turn_right * (error_turn_right - old_error_turn_right));
+		D_control_turn_left  = (int)(Kd_turn_left  * (error_turn_left  - old_error_turn_left));
+		
+		motor_right(P_control_turn_right + D_control_turn_right + I_control_turn_right);
+		motor_left(P_control_turn_left + D_control_turn_left + I_control_turn_left);
 		
 		//過去の偏差を更新
 		old_error_turn_left  = error_turn_left;
@@ -262,6 +315,12 @@ ISR(TIMER1_COMPA_vect){
 		
 		//パルス速度が0になったとき停止したことになるので
 		if((pulse_velocity_left == 0) && (pulse_velocity_right == 0) && (abs(error_turn_left) < 45) && (abs(error_turn_right) < 45)){
+			
+			old_error_turn_left  = 0;
+			old_error_turn_right = 0;
+			i_sum_turn_right = 0;
+			i_sum_turn_left  = 0;
+			
 			//まだ前に壁が在ればフラグを立てる
 			if(sensor_distance_AVE_LF_RF <= 70){
 				turn_flag = 1;
