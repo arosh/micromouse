@@ -13,7 +13,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-volatile int count = 0;
+void serial_number(int value, int digit);
 
 //各スイッチのテスト
 void switch_test(void);
@@ -40,6 +40,20 @@ void encoder(void);
 void beep(void);
 void beep_start(void);
 void beep_end(void);
+
+void rs_putc (char c)
+{
+	loop_until_bit_is_set(UCSR0A, UDRE0); //UDREビットが1になるまで待つ
+	UDR0 = c;
+}
+
+void rs_puts (char *st)
+{
+	while (*st) {
+		rs_putc (*st);
+		if (*(st++) == '\n') rs_putc('\r');
+	}
+}
 
 //AD変換値を距離[mm]に変換(RF)
 float sensor_distance_convert_RF(int x)
@@ -128,6 +142,11 @@ ISR(TIMER1_COMPA_vect){
 	int sensor_distance_AVE_LF_RF = ((int)sensor_distance_LF+(int)sensor_distance_RF)/2;
 
 	
+	//serial_number(Left_RotaryEncorder_val, 5);
+	//rs_putc(' ');
+	//serial_number(Right_RotaryEncorder_val, 5);
+	//rs_puts("\n\r");
+	
 	
 	//等速制御に必要な変数達------------------------------------------------------------
 	
@@ -139,8 +158,12 @@ ISR(TIMER1_COMPA_vect){
 	const float Kp_movement_right = 2.5;
 	const float Kp_movement_left  = 2.5;
 	
+	//左右の壁の距離の誤差にかけるゲイン
+	const float Kp_wall_right = 0;
+	const float Kp_wall_left  = 0;
+	
 	//左右のホイールの移動量
-	static long int movement_right = 0; 
+	static long int movement_right = 0;
 	static long int movement_left  = 0;
 	
 	//目標パルス速度
@@ -155,6 +178,10 @@ ISR(TIMER1_COMPA_vect){
 	int error_movement_left;
 	int error_movement_right;
 	
+	//左右の壁の距離の誤差
+	int error_wall_right;
+	int error_wall_left;
+	
 	//目標パルス速度にするための制御量
 	int control_velocity_right;
 	int control_velocity_left;
@@ -163,7 +190,9 @@ ISR(TIMER1_COMPA_vect){
 	int control_movement_right;
 	int control_movement_left;
 	
-	
+	//左右の壁の誤差に対する制御量
+	int control_wall_right;
+	int control_wall_left;
 	
 	
 	//減速に必要な変数達-------------------------------------------------------------------------------
@@ -171,10 +200,10 @@ ISR(TIMER1_COMPA_vect){
 	//const char stop_masu = 2;
 	//int movement = stop_masu * 608;		//一区画:180mm タイヤ直径:37.7mm タイヤ1回転のパルス数:400  180*400/(37.7*pi)=607.9 
 	
-	const float Kp_down_right = 0.5;
-	const float Kp_down_left  = 0.5;
-	const float Ki_down_right = 0.01;
-	const float Ki_down_left  = 0.01;
+	const float Kp_down_right = 0.65;
+	const float Kp_down_left  = 0.65;
+	const float Ki_down_right = 0;
+	const float Ki_down_left  = 0;
 	
 	static int I_sum_down_right = 0;
 	static int I_sum_down_left  = 0;
@@ -193,13 +222,12 @@ ISR(TIMER1_COMPA_vect){
 	
 	
 	//90度回転に必要な変数達--------------------------------------------------------------------------
-	
-	const float Kp_turn_right = 0.40;
-	const float Kp_turn_left  = 0.40;
-	const float Ki_turn_right = 0.005;
-	const float Ki_turn_left  = 0.005;
-	const float Kd_turn_right = 0;
-	const float Kd_turn_left  = 0;
+	const float Kp_turn_right = 0.46;
+	const float Kp_turn_left  = 0.46;
+	const float Ki_turn_right = 0;
+	const float Ki_turn_left  = 0;
+	const float Kd_turn_right = 0.02;
+	const float Kd_turn_left  = 0.02;
 	
 	//int error_turn_right;
 	//int error_turn_left;
@@ -238,6 +266,10 @@ ISR(TIMER1_COMPA_vect){
 			error_movement_left  = movement_right - movement_left;
 			error_movement_right = movement_left - movement_right;
 			
+			//左右の壁までの距離の誤差
+			error_wall_right = sensor_distance_L - sensor_distance_R;
+			error_wall_left  = sensor_distance_R - sensor_distance_L;
+			
 			//目標パルス速度にするための制御量
 			control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
 			control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
@@ -246,8 +278,12 @@ ISR(TIMER1_COMPA_vect){
 			control_movement_right = (int)(Kp_movement_right * error_movement_right);
 			control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
 			
-			motor_right(control_velocity_right + control_movement_right);
-			motor_left(control_velocity_left  + control_movement_left);
+			//左右の壁までの距離の誤差に対する制御量
+			control_wall_right = (int)(Kp_wall_right * error_wall_right);
+			control_wall_left  = (int)(Kp_wall_left  * error_wall_left);
+			
+			motor_right(control_velocity_right + control_movement_right + control_wall_right);
+			motor_left(control_velocity_left  + control_movement_left + control_wall_left);
 		
 		}
 		//しばらくすると前に壁があるので減速(目標値に近づける)し、停止し、ターンフラグを立てる
@@ -416,8 +452,8 @@ int main(void)
 	/*
 	 *	PORTD
 	 *
-	 * 0:
-	 * 1:
+	 * 0: シリアル通信(RXD)
+	 * 1: シリアル通信(TXD)
 	 * 2: 右ロータリーエンコーダのパルス波Aを入力
 	 * 3: 右ロータリーエンコーダのパルス波Bを入力
 	 * 4:
@@ -442,6 +478,11 @@ int main(void)
 	Init_Timer1();
 	//3:エンコーダ読み取り+姿勢制御
 	Init_Timer3();
+	
+	UBRR0  = 129;
+	UCSR0A = 0b00000000;
+	UCSR0B = 0b00011000;
+	UCSR0C = 0b00000110;
 	
 	//AD変換レジスタ設定
 	loop_until_bit_is_clear(PINB,PINB2);		//スタートスイッチ(青色)が押されるまで待機
@@ -470,9 +511,12 @@ int main(void)
 		//lcd_number(abs(error_turn_right),5);
 		//lcd_pos(0,0);
 		//
+		serial_number(Left_RotaryEncorder_val, 5);
+		rs_putc(' ');
+		serial_number(Right_RotaryEncorder_val, 5);
+		rs_puts("\n\r");
 		
-		
-		print_all_sensor();
+		//print_all_sensor();
 		//print_RotaryEncorder();
 		//Print_ADC();
 		//switch_test();
@@ -597,6 +641,20 @@ void switch_test(void)
 		lcd_pos(1,0);
 		lcd_str("press the button");
 		lcd_pos(0,0);
+	}
+}
+
+void serial_number(int value, int digit) {
+	int i;
+	int base = 1;
+
+	for(i = 0; i < digit - 1; ++i) {
+		base *= 10;
+	}
+
+	for(i = 0; i < digit; ++i) {
+		rs_putc(0x30 + (value / base) % 10);
+		base /= 10;
 	}
 }
 
