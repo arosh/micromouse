@@ -9,6 +9,7 @@
 #include "avr_tools.h"
 #include "avr_adc.h"
 
+//変数の共有化がavr_adc.hでされているので実体化させる。
 volatile unsigned char Left_Sensor_val = 0;
 volatile unsigned char LeftFront_Sensor_val = 0;
 volatile unsigned char RightFront_Sensor_val = 0;
@@ -45,9 +46,9 @@ ISR(ADC_vect){
 
 void Init_ADC_get(void)
 {
-	// TODO: 発行の順番があって無さそう？
+	// 発行の順番があって無さそう？ -> 実はこれで正しい (コメントが間違っている)
 	const unsigned char LEDPORT[] = { 0b10000000, 0b00010000, 0b00100000, 0b01000000 };
-	// TODO: Init_ADCのADMUXと整合性がとれていない
+	// TODO: Init_ADCのADMUXと基準電圧選択の整合性がとれていない
 	const unsigned char MUXREG[]  = { 0b00100000, 0b00100001, 0b00100010, 0b00100011 };
 
 	PORTA = LEDPORT[adc_chanel];			//LED(ch0)発光
@@ -55,7 +56,10 @@ void Init_ADC_get(void)
 	ADMUX = MUXREG[adc_chanel];			//入力をch0に切り替え
 	_delay_us(50);						//切り替えが安定するまで待機
 
-	sbi(ADCSRA, ADSC); //AD変換スタート		#6 = 1 にすると変換がスタートする
+	ADCSRA = 0b11001111;
+	
+	//sbi()が機能していない可能性が
+	//sbi(ADCSRA, ADSC); //AD変換スタート		#6 = 1 にすると変換がスタートする
 }
 
 /*
@@ -143,4 +147,7 @@ void Init_ADC(void)
 	 */
 	DIDR0 = 0b00001111;
 }
+
+
+
 // vim: noet ts=4 sw=4 sts=0

@@ -11,8 +11,9 @@
 #include "avr_motor.h"
 #include "avr_adc.h"
 #include <math.h>
+#include <stdlib.h>
 
-volatile int count = 0;
+void serial_number(int value, int digit);
 
 //各スイッチのテスト
 void switch_test(void);
@@ -40,43 +41,56 @@ void beep(void);
 void beep_start(void);
 void beep_end(void);
 
-//AD変換値を距離に変換(RF)
-float sensor_distance_convert_RF (int x);
+void rs_putc (char c)
+{
+	loop_until_bit_is_set(UCSR0A, UDRE0); //UDREビットが1になるまで待つ
+	UDR0 = c;
+}
 
-//AD変換値を距離に変換(LF)
-float sensor_distance_convert_LF (int x);
+void rs_puts (char *st)
+{
+	while (*st) {
+		rs_putc (*st);
+		if (*(st++) == '\n') rs_putc('\r');
+	}
+}
 
-//AD変換値を距離に変換(L)
-float sensor_distance_convert_L (int x);
-
-//AD変換値を距離に変換(R)
-float sensor_distance_convert_R (int x);
-
+//AD変換値を距離[mm]に変換(RF)
 float sensor_distance_convert_RF(int x)
 {
 	return 0.0038 * x * x - 1.3275 * x + 141.36;
 }
 
+//AD変換値を距離[mm]に変換(LF)
 float sensor_distance_convert_LF(int x)
 {
 	return 0.0031 * x * x - 1.1545 * x + 136.38;
 }
 
+//AD変換値を距離[mm]に変換(L)
 float sensor_distance_convert_L(int x)
 {
 	return 0.0025 * x * x - 0.9635 * x + 132.45;
 }
 
+//AD変換値を距離[mm]に変換(R)
 float sensor_distance_convert_R(int x)
 {
 	return 0.0023 * x * x - 0.9322 * x + 133.16;
 }
 
-//各センサ値を格納する変数
-extern volatile unsigned char Left_Sensor_val;
-extern volatile unsigned char LeftFront_Sensor_val;
-extern volatile unsigned char RightFront_Sensor_val;
-extern volatile unsigned char Right_Sensor_val;
+//パルス速度をPWMに変換(右)
+int pulsevelocity_PWM_convert_R(int x)
+{
+	return 0.0228 * x + 12.783;
+}
+
+//パルス速度をPWMに変換(左)
+int pulsevelocity_PWM_convert_L(int x)
+{
+	return 0.025 * x + 11.967;
+}
+
 
 volatile float sensor_distance_LF;
 volatile float sensor_distance_RF; 
@@ -84,19 +98,282 @@ volatile float sensor_distance_L;
 volatile float sensor_distance_R;
 
 //ロータリーエンコーダの値を格納する変数
-volatile unsigned int Left_RotaryEncorder_val;
-volatile unsigned int Right_RotaryEncorder_val;
+volatile long int Left_RotaryEncorder_val  = 0;
+volatile long int Right_RotaryEncorder_val = 0;
 
-unsigned int reference_right_encoder;
-unsigned int reference_left_encoder;
-	
+//ホイールのパルス速度(負の場合もあるのでsignedで)
+volatile int pulse_velocity_left;
+volatile int pulse_velocity_right;
+
+//ターンに必要なフラグ達
+volatile char turn_flag = 0;
+volatile char prefrance_flag;
+volatile long int preferrance_turn_right = 0;
+volatile long int preferrance_turn_left  = 0;
+
+volatile int error_turn_right;
+volatile int error_turn_left;
+
+volatile char turn_select = 1;	// 1なら右回転	-1なら左回転
+
 // センサ用割り込み
 ISR(TIMER1_COMPA_vect){
-	Init_ADC_get();
+	
+	//パルス速度を求める----------------------------------------------------------------
+	static int previous_pulse_count_right = 0;
+	int current_pulse_count_right  = Right_RotaryEncorder_val;
+	static int previous_pulse_count_left  = 0;
+	int current_pulse_count_left   = Left_RotaryEncorder_val;
+	
+	//この割り込み関数は10msごとに読み込まれるのでパルスカウントの差を10ms[0.01s]で割ることでパルス速度[pulse/s]を求めることができる
+	pulse_velocity_right = (current_pulse_count_right - previous_pulse_count_right) / 0.01;
+	pulse_velocity_left  = (current_pulse_count_left  - previous_pulse_count_left ) / 0.01;
+	
+	previous_pulse_count_right = Right_RotaryEncorder_val;
+	previous_pulse_count_left  = Left_RotaryEncorder_val;
+	
+	
+	
+	//それぞれのAD変換値を距離[mm]に変換------------------------------------------------
+	sensor_distance_LF = sensor_distance_convert_LF(LeftFront_Sensor_val);
+	sensor_distance_RF = sensor_distance_convert_RF(RightFront_Sensor_val);
+	sensor_distance_L  = sensor_distance_convert_L(Left_Sensor_val);
+	sensor_distance_R  = sensor_distance_convert_R(Right_Sensor_val);
+	int sensor_distance_AVE_LF_RF = ((int)sensor_distance_LF+(int)sensor_distance_RF)/2;
+
+	
+	//serial_number(Left_RotaryEncorder_val, 5);
+	//rs_putc(' ');
+	//serial_number(Right_RotaryEncorder_val, 5);
+	//rs_puts("\n\r");
+	
+	
+	//等速制御に必要な変数達------------------------------------------------------------
+	
+	//速度の誤差にかけるゲイン
+	const float Kp_velocity_right = 0.08;
+	const float Kp_velocity_left  = 0.08;
+	
+	//左右の移動量の誤差にかけるゲイン
+	const float Kp_movement_right = 2.5;
+	const float Kp_movement_left  = 2.5;
+	
+	//左右の壁の距離の誤差にかけるゲイン
+	const float Kp_wall_right = 0;
+	const float Kp_wall_left  = 0;
+	
+	//左右のホイールの移動量
+	static long int movement_right = 0;
+	static long int movement_left  = 0;
+	
+	//目標パルス速度
+	const int preferrance_pluse_velocity_right = 1600;
+	const int preferrance_pluse_velocity_left  = 1600;
+	
+	//目標パルス速度と現在のパルス速度の誤差
+	int error_velocity_left;
+	int error_velocity_right;
+	
+	//左右の移動量の誤差
+	int error_movement_left;
+	int error_movement_right;
+	
+	//左右の壁の距離の誤差
+	int error_wall_right;
+	int error_wall_left;
+	
+	//目標パルス速度にするための制御量
+	int control_velocity_right;
+	int control_velocity_left;
+	
+	//左右の壁の誤差に対する制御量
+	int control_movement_right;
+	int control_movement_left;
+	
+	//左右の壁の誤差に対する制御量
+	int control_wall_right;
+	int control_wall_left;
+	
+	
+	//減速に必要な変数達-------------------------------------------------------------------------------
+	
+	//const char stop_masu = 2;
+	//int movement = stop_masu * 608;		//一区画:180mm タイヤ直径:37.7mm タイヤ1回転のパルス数:400  180*400/(37.7*pi)=607.9 
+	
+	const float Kp_down_right = 0.65;
+	const float Kp_down_left  = 0.65;
+	const float Ki_down_right = 0;
+	const float Ki_down_left  = 0;
+	
+	static int I_sum_down_right = 0;
+	static int I_sum_down_left  = 0;
+	
+	const char prefarance_sensor_right = 55;
+	const char prefarance_sensor_left  = 55; 
+	
+	int error_sensor_right;
+	int error_sensor_left;
+	
+	int P_control_down_right;
+	int P_control_down_left;
+	
+	int I_control_down_right;
+	int I_control_down_left;
+	
+	
+	//90度回転に必要な変数達--------------------------------------------------------------------------
+	const float Kp_turn_right = 0.46;
+	const float Kp_turn_left  = 0.46;
+	const float Ki_turn_right = 0;
+	const float Ki_turn_left  = 0;
+	const float Kd_turn_right = 0.02;
+	const float Kd_turn_left  = 0.02;
+	
+	//int error_turn_right;
+	//int error_turn_left;
+	
+	static int old_error_turn_right = 0;
+	static int old_error_turn_left = 0;
+	
+	static int i_sum_turn_right = 0;
+	static int i_sum_turn_left  = 0;
+	
+	int P_control_turn_right;
+	int P_control_turn_left;
+	
+	int I_control_turn_right;
+	int I_control_turn_left;
+	
+	int D_control_turn_right;
+	int D_control_turn_left;
+	
+	
+	
+	//ターンしない
+	if(turn_flag == 0){
+		
+		movement_right += pulse_velocity_right * 0.01;
+		movement_left  += pulse_velocity_left  * 0.01;
+		
+		//前の壁がないとき前進
+		if(sensor_distance_AVE_LF_RF >= 95){
+			
+			//左右の速度の誤差
+			error_velocity_left  = preferrance_pluse_velocity_left  - pulse_velocity_left;
+			error_velocity_right = preferrance_pluse_velocity_right - pulse_velocity_right;
+			
+			//左右の移動量の誤差
+			error_movement_left  = movement_right - movement_left;
+			error_movement_right = movement_left - movement_right;
+			
+			//左右の壁までの距離の誤差
+			error_wall_right = sensor_distance_L - sensor_distance_R;
+			error_wall_left  = sensor_distance_R - sensor_distance_L;
+			
+			//目標パルス速度にするための制御量
+			control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
+			control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
+			
+			//左右の壁の誤差に対する制御量
+			control_movement_right = (int)(Kp_movement_right * error_movement_right);
+			control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
+			
+			//左右の壁までの距離の誤差に対する制御量
+			control_wall_right = (int)(Kp_wall_right * error_wall_right);
+			control_wall_left  = (int)(Kp_wall_left  * error_wall_left);
+			
+			motor_right(control_velocity_right + control_movement_right + control_wall_right);
+			motor_left(control_velocity_left  + control_movement_left + control_wall_left);
+		
+		}
+		//しばらくすると前に壁があるので減速(目標値に近づける)し、停止し、ターンフラグを立てる
+		else{
+			
+			error_sensor_right = abs(prefarance_sensor_right - sensor_distance_RF);
+			error_sensor_left  = abs(prefarance_sensor_left  - sensor_distance_LF);
+			
+			I_sum_down_right += error_sensor_right;
+			I_sum_down_left  += error_sensor_left;
+			
+			P_control_down_right = (int)(Kp_down_right * error_sensor_right);
+			P_control_down_left  = (int)(Kp_down_left  * error_sensor_left);
+			
+			I_control_down_right = (int)(Ki_down_right * I_sum_down_right);
+			I_control_down_left  = (int)(Ki_down_left  * I_sum_down_left);
+			
+			motor_right(P_control_down_right + I_control_down_right);
+			motor_left(P_control_down_left + I_control_down_left);
+			
+			if((pulse_velocity_left == 0) && (pulse_velocity_right == 0)){
+				
+				turn_flag = 1;
+				prefrance_flag = 1;
+				I_sum_down_left  = 0;
+				I_sum_down_right = 0;
+				
+			}
+		}
+	}
+	//ターンする
+	else{
+		
+		//ターンの最初目標位置を設定する
+		if(prefrance_flag == 1){
+			
+			preferrance_turn_right = Right_RotaryEncorder_val + (-turn_select * 180);		//タイヤ間円の円周の1/4がパルスカウントの180と一致する
+			preferrance_turn_left  = Left_RotaryEncorder_val  + (turn_select  * 180);
+			
+			prefrance_flag = 0;
+		
+		}
+		
+		error_turn_right = preferrance_turn_right - Right_RotaryEncorder_val;
+		error_turn_left  = preferrance_turn_left  - Left_RotaryEncorder_val;
+		
+		i_sum_turn_left  += error_turn_left;
+		i_sum_turn_right += error_turn_right;
+		
+		P_control_turn_right = (int)(Kp_turn_right * error_turn_right);
+		P_control_turn_left  = (int)(Kp_turn_left  * error_turn_left);
+		
+		I_control_turn_right = (int)(Ki_turn_right * i_sum_turn_right);
+		I_control_turn_left  = (int)(Ki_turn_left  * i_sum_turn_left);
+		
+		D_control_turn_right = (int)(Kd_turn_right * (error_turn_right - old_error_turn_right));
+		D_control_turn_left  = (int)(Kd_turn_left  * (error_turn_left  - old_error_turn_left));
+		
+		motor_right(P_control_turn_right + D_control_turn_right + I_control_turn_right);
+		motor_left(P_control_turn_left + D_control_turn_left + I_control_turn_left);
+		
+		//過去の偏差を更新
+		old_error_turn_left  = error_turn_left;
+		old_error_turn_right = error_turn_right;
+		
+		//パルス速度が0になったとき停止したことになるので
+		if((pulse_velocity_left == 0) && (pulse_velocity_right == 0) && (abs(error_turn_left) < 45) && (abs(error_turn_right) < 45)){
+			
+			old_error_turn_left  = 0;
+			old_error_turn_right = 0;
+			i_sum_turn_right = 0;
+			i_sum_turn_left  = 0;
+			
+			//まだ前に壁が在ればフラグを立てる
+			if(sensor_distance_AVE_LF_RF <= 70){
+				turn_flag = 1;
+				prefrance_flag = 1;
+			}
+			//前に壁がなければフラグを消す
+			else{
+				turn_flag = 0;
+			}
+		}
+	}
 }
 
 // エンコーダ用割り込み
-ISR(TIMER3_COMPA_vect){
+ISR(TIMER3_COMPA_vect)
+{
+	
 	static int sensor_count = 0;
 	
 	if(sensor_count >= 250){
@@ -106,86 +383,7 @@ ISR(TIMER3_COMPA_vect){
 	sensor_count++;
 	
 	encoder();
-	
-	/*//それぞれのAD変換値を距離[mm]に変換
-	sensor_distance_LF = sensor_distance_convert_LF(LeftFront_Sensor_val);
-	sensor_distance_RF = sensor_distance_convert_RF(RightFront_Sensor_val);
-	sensor_distance_L  = sensor_distance_convert_L(Left_Sensor_val);
-	sensor_distance_R  = sensor_distance_convert_R(Right_Sensor_val);
- 	
-	//前壁検知のためにフロントのセンサの平均値をとる
-	float sensor_distance_LF_RF_AVE = (sensor_distance_LF + sensor_distance_RF) * 0.5;
-	
-	//エンコーダをよみとる
-	encoder();
-	
-	static char turn_flag = 0;
-	
-	//ターンフラグが立っていないとき
-	if(turn_flag == 0){
-		
-		//前壁がないとき
-		if(sensor_distance_LF_RF_AVE > 60){
-			
-			//直進
-			const float KP_RIGHT = 0.15;
-			const float KP_LEFT  = 0.15;
 
-			const char REFERENCE_RIGHT = 70;
-			const char REFERENCE_LEFT  = 70;
-
-			float errer_right = REFERENCE_RIGHT - sensor_distance_R;
-			float errer_left  = REFERENCE_LEFT  - sensor_distance_L;
-
-			float control_right = (KP_RIGHT * errer_right);
-			float control_left  = (KP_LEFT  * errer_left);
-			
-			motor_right((int)control_right + 38);
-			motor_left((int)control_left + 41);
-			
-		}
-		//前壁があるとき
-		else{
-			
-			motor_brake_right();
-			motor_brake_left();
-			
-			turn_flag = 1;
-			
-		}
-	}
-	
-	//ターンフラグが立っているとき
-	else{
-		//ターンをする
-		reference_right_encoder = Right_RotaryEncorder_val - 190;
-		reference_left_encoder  = Left_RotaryEncorder_val + 190;
-		
-		const float KP_RIGHT = 0.20;
-		const float KP_LEFT  = 0.20;
-		
-		int error_right_encoder = reference_right_encoder  - Right_RotaryEncorder_val;
-		int error_left_encoder  = reference_left_encoder  - Left_RotaryEncorder_val;
-		
-		float control_right = KP_RIGHT * error_right_encoder;
-		float control_left  = KP_LEFT  * error_left_encoder;
-		
-		motor_right((int)control_right - 10);
-		motor_left((int)control_left + 20);
-		
-		//
-		if( reference_left_encoder >  Left_RotaryEncorder_val){
-			//前壁があるとき
-			if(sensor_distance_LF_RF_AVE < 60){
-				turn_flag = 1;
-			}
-			//前壁がないとき
-			else{
-				turn_flag = 0;
-			}
-		}
-	}
-	*/
 }
 
 int main(void)
@@ -254,8 +452,8 @@ int main(void)
 	/*
 	 *	PORTD
 	 *
-	 * 0:
-	 * 1:
+	 * 0: シリアル通信(RXD)
+	 * 1: シリアル通信(TXD)
 	 * 2: 右ロータリーエンコーダのパルス波Aを入力
 	 * 3: 右ロータリーエンコーダのパルス波Bを入力
 	 * 4:
@@ -277,9 +475,14 @@ int main(void)
 	//2:左モーターPWM
 	Init_Timer2();
 	//1:センサ用
-	//Init_Timer1();
+	Init_Timer1();
 	//3:エンコーダ読み取り+姿勢制御
 	Init_Timer3();
+	
+	UBRR0  = 129;
+	UCSR0A = 0b00000000;
+	UCSR0B = 0b00011000;
+	UCSR0C = 0b00000110;
 	
 	//AD変換レジスタ設定
 	loop_until_bit_is_clear(PINB,PINB2);		//スタートスイッチ(青色)が押されるまで待機
@@ -290,7 +493,30 @@ int main(void)
 	
 	while(1){
 		
-		print_all_sensor();
+		//lcd_pos(0,0);
+		//lcd_str("turn");
+		//lcd_pos(0,6);
+		//lcd_number(turn_flag, 1);
+		//lcd_pos(0,8);
+		//lcd_str("pre");
+		//lcd_pos(0,12);
+		//lcd_number(prefrance_flag, 1);
+		//lcd_pos(1,0);
+		//lcd_number(error_turn_left,5);
+		//lcd_pos(1,6);
+		//if(error_turn_right < 0) {
+			//lcd_str("-");
+		//}
+		//lcd_pos(1,7);
+		//lcd_number(abs(error_turn_right),5);
+		//lcd_pos(0,0);
+		//
+		serial_number(Left_RotaryEncorder_val, 5);
+		rs_putc(' ');
+		serial_number(Right_RotaryEncorder_val, 5);
+		rs_puts("\n\r");
+		
+		//print_all_sensor();
 		//print_RotaryEncorder();
 		//Print_ADC();
 		//switch_test();
@@ -342,6 +568,7 @@ void print_all_sensor(void)
 	sensor_distance_L  = (int)sensor_distance_convert_L(Left_Sensor_val);
 	sensor_distance_R  = (int)sensor_distance_convert_R(Right_Sensor_val);
 	
+	
 	lcd_pos(0,0);
 	lcd_number(Right_RotaryEncorder_val, 5);
 	
@@ -366,24 +593,19 @@ void print_all_sensor(void)
 //各センサの値をLCDに表示
 void Print_ADC(void)
 {
-	sensor_distance_LF = (int)sensor_distance_convert_LF(LeftFront_Sensor_val);
-	sensor_distance_RF = (int)sensor_distance_convert_RF(RightFront_Sensor_val);
-	sensor_distance_L  = (int)sensor_distance_convert_L(Left_Sensor_val);
-	sensor_distance_R  = (int)sensor_distance_convert_R(Right_Sensor_val);
-	
 	lcd_str("RF  LF  L   R");
 	
 	lcd_pos(1,0);
-	lcd_number(sensor_distance_RF, 3);
+	lcd_number(RightFront_Sensor_val, 3);
 	
 	lcd_pos(1,4);
-	lcd_number(sensor_distance_LF, 3);
+	lcd_number(LeftFront_Sensor_val, 3);
 	
 	lcd_pos(1,8);
-	lcd_number(sensor_distance_L, 3);
+	lcd_number(Left_Sensor_val, 3);
 	
 	lcd_pos(1,12);
-	lcd_number(sensor_distance_R, 3);
+	lcd_number(Right_Sensor_val, 3);
 	
 	lcd_pos(0,0);
 }
@@ -422,12 +644,26 @@ void switch_test(void)
 	}
 }
 
+void serial_number(int value, int digit) {
+	int i;
+	int base = 1;
+
+	for(i = 0; i < digit - 1; ++i) {
+		base *= 10;
+	}
+
+	for(i = 0; i < digit; ++i) {
+		rs_putc(0x30 + (value / base) % 10);
+		base /= 10;
+	}
+}
+
 /*
  *	Function Name	: Init_Timer1
  *	Tittle			: タイマー1のレジスタ設定
  *	Input			:	なし
  *	Output			: なし
- *	Descripution	: タイマーのオーバーフローにより割り込みを発生させる
+ *	Descripution	: CTCモードで割り込みを発生させる
  *	ISR(TIMER1_OVF_vect)
  */
 void Init_Timer1(void)
@@ -445,9 +681,8 @@ void Init_Timer1(void)
 	//		#3 = 0, #2 = 0
 	//
 	//	1,0: PWM波形の種類の設定(下記のTCCR1Bにも設定が跨っているので注意)
-	//		WGM13=0, WGM12=0, WGM11=0, WGM10=0で通常動作(データシート p.84, 表16-5の番号4)
+	//		WGM13=0, WGM12=1, WGM11=0, WGM10=0で通常動作(データシート p.84, 表16-5の番号4)
 	//		#1 = 0, #0 = 0
-	//		TODO 設定が間違っているのに何故か動く
 	TCCR1A = 0b00000000;
 	
 	//TCCR1B(Timer Counter1 Control register B)
@@ -463,16 +698,11 @@ void Init_Timer1(void)
 	//
 	//	2,1,0: 分周器設定
 	//		ATmega1284P-AUの動作クロックは20MHz(ヒューズビットで分周設定を解除後)
-	//		分周は1/1024
-	//		20MHz/8 ==> 約2500kHz(0.4us)
-	//		#2 = 1, #1 = 0, #0 = 1
-	//
-	//		CTCがうまくいかなかったため
-	//		オーバーフロー割り込みに変更した。
-	//		ということなので
-	//		0.4*2^16 = 0.0262s(38Hz)
-	//		1秒間に38回サンプリングするがADCの仕組みから/4することになるので1個あたり1秒間に約10回になる
-	TCCR1B = 0b00000010;
+	//		分周は1/64
+	//		20MHz/64 ==> 約312.5kHz(3.2us)
+	//		#2 = 0, #1 = 1, #0 = 1
+	//		
+	TCCR1B = 0b00001011;
 	
 	//TCNT1(Timer Counter1)
 	//		タイマカウンタ(16bit)に直接アクセスできる
@@ -483,7 +713,13 @@ void Init_Timer1(void)
 	//OCR1A(Timer Counter1 Output Compare A Register)
 	//      いつコンペアマッチAをさせるかを設定する(16bit)
 	//
-	OCR1A = 0;
+	//		10ms間隔で割り込みを発生させ速度制御を行う
+	//		タイマの動作クロックはメインクロックを64分周しているので321.5kHz(3.2us)
+	//		10msを作りたいので
+	//		(10 * 10^-3) / (3.2 * 10^-6) = 3125
+	//
+	//
+	OCR1A = 3125;
 	
 	//OCR1B(Timer Counter1 Output Compare B Register)
 	//		いつコンペアマッチBをさせるかを設定する(16bit)
@@ -500,13 +736,13 @@ void Init_Timer1(void)
 	//		#2 = 0
 	//
 	//  1 : A比較の許可
-	//		使用しないので
-	//		#1 = 0
+	//		使用するので
+	//		#1 = 1
 	//
 	//	0 : 漏れ割り込み許可
-	//		使用するので
-	//		#0 = 1
-	TIMSK1 = 0b00000001;
+	//		使用しないので
+	//		#0 = 0
+	TIMSK1 = 0b00000010;
 }
 
 void Init_Timer3(void)
