@@ -46,9 +46,9 @@ ISR(ADC_vect){
 
 void Init_ADC_get(void)
 {
-	// TODO: 発行の順番があって無さそう？
+	// 発行の順番があって無さそう？ -> 実はこれで正しい (コメントが間違っている)
 	const unsigned char LEDPORT[] = { 0b10000000, 0b00010000, 0b00100000, 0b01000000 };
-	// TODO: Init_ADCのADMUXと整合性がとれていない
+	// TODO: Init_ADCのADMUXと基準電圧選択の整合性がとれていない
 	const unsigned char MUXREG[]  = { 0b00100000, 0b00100001, 0b00100010, 0b00100011 };
 
 	PORTA = LEDPORT[adc_chanel];			//LED(ch0)発光
