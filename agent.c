@@ -5,35 +5,45 @@
 #include "agent.h"
 #include "sensor.h"
 
+#define gbi(byte,pos) (((byte) >> (pos)) & UINT8_C(1))
+#define sbi(byte,pos) ((byte) |= (UINT8_C(1) << (pos)))
+#define cbi(byte,pos) ((byte) &= ~(UINT8_C(1) << (pos)))
+
 static const int size = MAP_SIZE;
 // ceil(size*size*4/8)
 static uint8_t wall[(MAP_SIZE*MAP_SIZE*4+8-1)/8];
 
 static inline uint8_t wall_get(const int y, const int x, const int k) {
-  return (wall[(y*size*4 + x*4 + k) / 8] >> ((y*size*4 + x*4 + k) % 8)) & UINT8_C(1);
+  const int hash = y*size*4 + x*4 + k;
+  return gbi(wall[hash / 8], hash % 8);
 }
 
 static inline void wall_set(const int y, const int x, const int k) {
-  wall[(y*size*4 + x*4 + k) / 8] |=  (UINT8_C(1) << ((y*size*4 + x*4 + k) % 8));
+  const int hash = y*size*4 + x*4 + k;
+  sbi(wall[hash / 8], hash % 8);
 }
 
 static inline void wall_reset(const int y, const int x, const int k) {
-  wall[(y*size*4 + x*4 + k) / 8] &= ~(UINT8_C(1) << ((y*size*4 + x*4 + k) % 8));
+  const int hash = y*size*4 + x*4 + k;
+  cbi(wall[hash / 8], hash % 8);
 }
 
 // ceil(size*size/8)
 static uint8_t visible[(MAP_SIZE*MAP_SIZE+8-1)/8];
 
 static inline uint8_t visible_get(const int y, const int x) {
-  return (visible[(y*size + x) / 8] >> ((y*size + x) % 8)) & UINT8_C(1);
+  const int hash = y*size + x;
+  return gbi(visible[hash / 8], hash % 8);
 }
 
 static inline void visible_set(const int y, const int x) {
-  visible[(y*size + x) / 8] |=  (UINT8_C(1) << ((y*size + x) % 8));
+  const int hash = y*size + x;
+  sbi(visible[hash / 8], hash % 8);
 }
 
 static inline void visible_reset(const int y, const int x) {
-  visible[(y*size + x) / 8] &= ~(UINT8_C(1) << ((y*size + x) % 8));
+  const int hash = y*size + x;
+  cbi(visible[hash / 8], hash % 8);
 }
 
 static inline uint8_t check_pos(const int y, const int x) {
@@ -48,15 +58,18 @@ static uint8_t d[MAP_SIZE][MAP_SIZE];
 static uint8_t vis[(MAP_SIZE*MAP_SIZE+8-1)/8];
 
 static inline uint8_t vis_get(const int y, const int x) {
-  return (vis[(y*size + x) / 8] >> ((y*size + x) % 8)) & UINT8_C(1);
+  const int hash = y*size + x;
+  return gbi(vis[hash / 8], hash % 8);
 }
 
 static inline void vis_set(const int y, const int x) {
-  vis[(y*size + x) / 8] |=  (UINT8_C(1) << ((y*size + x) % 8));
+  const int hash = y*size + x;
+  sbi(vis[hash / 8], hash % 8);
 }
 
 static inline void vis_reset(const int y, const int x) {
-  vis[(y*size + x) / 8] &= ~(UINT8_C(1) << ((y*size + x) % 8));
+  const int hash = y*size + x;
+  cbi(vis[hash / 8], hash % 8);
 }
 
 static int curY, curX, dir;
@@ -89,38 +102,46 @@ enum action_t agent_explore(void) {
 
 void agent_learn(void) {
   // 既に学習済みならセンサーから値を取り込まない
-  if(get_visible(curY, curX)) return;
+  if(visible_get(curY, curX)) return;
 
-  set_visible(curY, curX);
+  visible_set(curY, curX);
   uint8_t sensor_data = sensor_get();
   for(int k = 0; k < 4; ++k) {
     // 後ろのセンサーは付いていないので
     if(k == 2) continue;
 
     int ndir = (dir + k) % 4;
-    if((sensor_data >> k) & 1) {
-      set_wall(curY, curX, ndir);
+    // 壁があるとき
+    if(gbi(sensor_data, k)) {
+      wall_set(curY, curX, ndir);
     }
+    // 壁が無いとき
     else {
-      reset_wall(curY, curX, ndir);
+      wall_reset(curY, curX, ndir);
     }
 
     int ny = curY + dy[ndir];
     int nx = curX + dx[ndir];
     if(check_pos(ny, nx)) {
-      wall[ny, nx, (ndir + 2) % 4] = wall[curY, curX, ndir];
+      if(gbi(sensor_data, k)) {
+        wall_set(ny, nx, (ndir + 2) % 4);
+      }
+      else {
+        wall_reset(ny, nx, (ndir + 2) % 4);
+      }
 
-      if(get_visible(ny, nx) == false) {
+      // 周囲4マスの壁の状態が分かっていたらvisibleにする処理
+      if(!visible_get(ny, nx)) {
         int n = 0;
         for(int l = 0; l < 4; ++l) {
           int my = ny + dy[l];
           int mx = nx + dx[l];
-          if(check_pos(my, mx) == false || get_visible(my, mx)) {
+          if(!check_pos(my, mx) || visible_get(my, mx)) {
             ++n;
           }
         }
         if(n == 4) {
-          set_visible(ny, nx);
+          visible_set(ny, nx);
         }
       }
     }
@@ -128,9 +149,32 @@ void agent_learn(void) {
 }
 
 #if TEST
+uint8_t sensor_get(void) {
+  return 0;
+}
 #include <stdio.h>
 int main(void) {
   agent_init();
+  for(int y = 0; y < size; ++y) {
+    for(int x = 0; x < size; ++x) {
+      putchar(' ');
+      putchar(wall_get(y,x,0) ? '-' : ' ');
+      putchar(' ');
+    }
+    putchar('\n');
+    for(int x = 0; x < size; ++x) {
+      putchar(wall_get(y,x,1) ? '|' : ' ');
+      putchar(' ');
+      putchar(wall_get(y,x,3) ? '|' : ' ');
+    }
+    putchar('\n');
+    for(int x = 0; x < size; ++x) {
+      putchar(' ');
+      putchar(wall_get(y,x,2) ? '-' : ' ');
+      putchar(' ');
+    }
+    putchar('\n');
+  }
   return 0;
 }
 #endif
