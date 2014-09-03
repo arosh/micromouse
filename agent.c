@@ -59,27 +59,30 @@ static inline uint8_t check_goal(const int y, const int x) {
 
 static const int dy[] = { -1, 0, 1, 0 };
 static const int dx[] = { 0, -1, 0, 1 };
-static uint8_t d[MAP_SIZE][MAP_SIZE];
+static uint8_t d[MAP_SIZE][MAP_SIZE][4];
 
 // ceil(size*size/8)
-static uint8_t vis[(MAP_SIZE*MAP_SIZE+8-1)/8];
+static uint8_t vis[(MAP_SIZE*MAP_SIZE*4+8-1)/8];
 
-static inline uint8_t vis_get(const int y, const int x) {
-	const int hash = y*size + x;
+static inline uint8_t vis_get(const int y, const int x, const int k) {
+	const int hash = y*size*4 + x*4 + k;
 	return gbi(vis[hash / 8], hash % 8);
 }
 
-static inline void vis_set(const int y, const int x) {
-	const int hash = y*size + x;
+static inline void vis_set(const int y, const int x, const int k) {
+	const int hash = y*size*4 + x*4 + k;
 	sbi(vis[hash / 8], hash % 8);
 }
 
-static inline void vis_reset(const int y, const int x) {
-	const int hash = y*size + x;
+static inline void vis_reset(const int y, const int x, const int k) {
+	const int hash = y*size*4 + x*4 + k;
 	cbi(vis[hash / 8], hash % 8);
 }
 
 static int curY, curX, dir;
+
+static uint8_t can_move[MAP_SIZE][MAP_SIZE][4];
+static void prepare_graph(void);
 
 void agent_init(void) {
 	// 壁の初期化
@@ -106,17 +109,17 @@ void agent_init(void) {
 
 // to_goalがtrueのとき、ゴールまでの経路を探索する
 // to_goalがfalseのとき、未探索の地点までの経路を探索する
-enum action_t agent_explore(const uint8_t to_goal) {
+enum action_t agent_explore(const bool to_goal) {
 	if(to_goal == false) {
 		for(int y = 0; y < size; ++y) {
 			for(int x = 0; x < size; ++x) {
-				vis_reset(y, x);
+				vis_reset(y, x, 0);
 				// 未探索の地点をゴールと設定
 				if(visible_get(y, x) == false) {
-					d[y][x] = 0;
+					d[y][x][0] = 0;
 				}
 				else {
-					d[y][x] = UINT8_MAX;
+					d[y][x][0] = UINT8_MAX;
 				}
 			}
 		}
@@ -124,12 +127,12 @@ enum action_t agent_explore(const uint8_t to_goal) {
 	else {
 		for(int y = 0; y < size; ++y) {
 			for(int x = 0; x < size; ++x) {
-				vis_reset(y, x);
+				vis_reset(y, x, 0);
 				if(check_goal(y, x)) {
-					d[y][x] = 0;
+					d[y][x][0] = 0;
 				}
 				else {
-					d[y][x] = UINT8_MAX;
+					d[y][x][0] = UINT8_MAX;
 				}
 			}
 		}
@@ -141,7 +144,7 @@ enum action_t agent_explore(const uint8_t to_goal) {
 
 		for (int y = 0; y < size; ++y) {
 			for (int x = 0; x < size; ++x) {
-				if (vis_get(y, x) == false && ((vy == -1 && vx == -1) || d[y][x] < d[vy][vx])) {
+				if (vis_get(y, x, 0) == false && ((vy == -1 && vx == -1) || d[y][x][0] < d[vy][vx][0])) {
 					vy = y;
 					vx = x;
 				}
@@ -149,11 +152,11 @@ enum action_t agent_explore(const uint8_t to_goal) {
 		}
 
 		// 未踏の地が無かったら、探索終了
-		if ((vy == -1 && vx == -1) || d[vy][vx] == UINT8_MAX) {
+		if ((vy == -1 && vx == -1) || d[vy][vx][0] == UINT8_MAX) {
 			break;
 		}
 
-		vis_set(vy, vx);
+		vis_set(vy, vx, 0);
 
 		for (int k = 0; k < 4; k++)
 		{
@@ -161,13 +164,13 @@ enum action_t agent_explore(const uint8_t to_goal) {
 			{
 				int ny = vy + dy[k];
 				int nx = vx + dx[k];
-				d[ny][nx] = min(d[ny][nx], d[vy][vx] + 1);
+				d[ny][nx][0] = min(d[ny][nx][0], d[vy][vx][0] + 1);
 			}
 		}
 	}
 
 	if(wall_get(curY, curX, (dir + 0) % 4) == false &&
-			d[curY + dy[(dir + 0) % 4]][curX + dx[(dir + 0) % 4]] == d[curY][curX] - 1) {
+			d[curY + dy[(dir + 0) % 4]][curX + dx[(dir + 0) % 4]][0] == d[curY][curX][0] - 1) {
 		// GoForward
 		curY += dy[dir];
 		curX += dx[dir];
@@ -175,27 +178,107 @@ enum action_t agent_explore(const uint8_t to_goal) {
 	}
 	
 	if(wall_get(curY, curX, (dir + 1) % 4) == false &&
-			d[curY + dy[(dir + 1) % 4]][curX + dx[(dir + 1) % 4]] == d[curY][curX] - 1) {
+			d[curY + dy[(dir + 1) % 4]][curX + dx[(dir + 1) % 4]][0] == d[curY][curX][0] - 1) {
 		// TurnLeft
 		dir = (dir + 1) % 4;
 		return TURN_LEFT;
 	}
 
 	if(wall_get(curY, curX, (dir + 3) % 4) == false &&
-			d[curY + dy[(dir + 3) % 4]][curX + dx[(dir + 3) % 4]] == d[curY][curX] - 1) {
+			d[curY + dy[(dir + 3) % 4]][curX + dx[(dir + 3) % 4]][0] == d[curY][curX][0] - 1) {
 		// TurnRight
 		dir = (dir + 3) % 4;
 		return TURN_RIGHT;
 	}
 
 	if(wall_get(curY, curX, (dir + 2) % 4) == false &&
-			d[curY + dy[(dir + 2) % 4]][curX + dx[(dir + 2) % 4]] == d[curY][curX] - 1) {
+			d[curY + dy[(dir + 2) % 4]][curX + dx[(dir + 2) % 4]][0] == d[curY][curX][0] - 1) {
 		// TurnLeft
 		// 後ろを向くのが最適解の場合は、とりあえず左を向いておいて、次のステップに任せる
 		return TURN_LEFT;
 	}
 
 	return NO_OPERATION;
+}
+
+static void prepare_graph(void) {
+	// いもす法
+	int s;
+
+	for (int y = 0; y < size; y++)
+	{
+		// →
+		s = 0;
+		can_move[y][0][1] = s;
+		for (int x = 1; x < size; x++)
+		{
+			if (wall_get(y, x, 1) == false)
+			{
+				s++;
+			}
+			else
+			{
+				s = 0;
+			}
+			can_move[y][x][1] = s;
+		}
+
+		// ←
+		s = 0;
+		can_move[y][size - 1][3] = s;
+		for (int x = size - 2; x >= 0; x--)
+		{
+			if (wall_get(y, x, 3) == false)
+			{
+				s++;
+			}
+			else
+			{
+				s = 0;
+			}
+			can_move[y][x][3] = s;
+		}
+
+	}
+
+	for (int x = 0; x < size; x++)
+	{
+		// ↓
+		s = 0;
+		can_move[0][x][0] = s;
+		for (int y = 1; y < size; y++)
+		{
+			if (wall_get(y, x, 0) == false)
+			{
+				s++;
+			}
+			else
+			{
+				s = 0;
+			}
+			can_move[y][x][0] = s;
+		}
+
+		// ↑
+		s = 0;
+		can_move[size - 1][x][2] = s;
+		for (int y = size - 2; y >= 0; y--)
+		{
+			if (wall_get(y, x, 2) == false)
+			{
+				s++;
+			}
+			else
+			{
+				s = 0;
+			}
+			can_move[y][x][2] = s;
+		}
+	}
+}
+
+void agent_compute_shortest_path(const bool to_start_area) {
+	prepare_graph();
 }
 
 void agent_learn(void) {
