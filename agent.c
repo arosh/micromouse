@@ -2,12 +2,15 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include "agent.h"
 #include "sensor.h"
 
 #define gbi(byte,pos) (((byte) >> (pos)) & UINT8_C(1))
 #define sbi(byte,pos) ((byte) |= (UINT8_C(1) << (pos)))
 #define cbi(byte,pos) ((byte) &= ~(UINT8_C(1) << (pos)))
+
+#define min(a,b) ((a) < (b) ? (a) : (b))
 
 static const int size = MAP_SIZE;
 // ceil(size*size*4/8)
@@ -48,6 +51,10 @@ static inline void visible_reset(const int y, const int x) {
 
 static inline uint8_t check_pos(const int y, const int x) {
 	return 0 <= y && y < size && 0 <= x && x < size;
+}
+
+static inline uint8_t check_goal(const int y, const int x) {
+	return GOAL_Y <= y && y < GOAL_Y + GOAL_H && GOAL_X <= x && x < GOAL_X + GOAL_W;
 }
 
 static const int dy[] = { -1, 0, 1, 0 };
@@ -97,7 +104,98 @@ void agent_init(void) {
 	memset(visible, 0, sizeof(visible));
 }
 
-enum action_t agent_explore(void) {
+// to_goalがtrueのとき、ゴールまでの経路を探索する
+// to_goalがfalseのとき、未探索の地点までの経路を探索する
+enum action_t agent_explore(const uint8_t to_goal) {
+	if(to_goal == false) {
+		for(int y = 0; y < size; ++y) {
+			for(int x = 0; x < size; ++x) {
+				vis_reset(y, x);
+				// 未探索の地点をゴールと設定
+				if(visible_get(y, x) == false) {
+					d[y][x] = 0;
+				}
+				else {
+					d[y][x] = UINT8_MAX;
+				}
+			}
+		}
+	}
+	else {
+		for(int y = 0; y < size; ++y) {
+			for(int x = 0; x < size; ++x) {
+				vis_reset(y, x);
+				if(check_goal(y, x)) {
+					d[y][x] = 0;
+				}
+				else {
+					d[y][x] = UINT8_MAX;
+				}
+			}
+		}
+	}
+
+	// ダイクストラ開始
+	while(true) {
+		int vy = -1, vx = -1;
+
+		for (int y = 0; y < size; ++y) {
+			for (int x = 0; x < size; ++x) {
+				if (vis_get(y, x) == false && ((vy == -1 && vx == -1) || d[y][x] < d[vy][vx])) {
+					vy = y;
+					vx = x;
+				}
+			}
+		}
+
+		// 未踏の地が無かったら、探索終了
+		if ((vy == -1 && vx == -1) || d[vy][vx] == UINT8_MAX) {
+			break;
+		}
+
+		vis_set(vy, vx);
+
+		for (int k = 0; k < 4; k++)
+		{
+			if (wall_get(vy, vx, k) == false)
+			{
+				int ny = vy + dy[k];
+				int nx = vx + dx[k];
+				d[ny][nx] = min(d[ny][nx], d[vy][vx] + 1);
+			}
+		}
+	}
+
+	if(wall_get(curY, curX, (dir + 0) % 4) == false &&
+			d[curY + dy[(dir + 0) % 4]][curX + dx[(dir + 0) % 4]] == d[curY][curX] - 1) {
+		// GoForward
+		curY += dy[dir];
+		curX += dx[dir];
+		return GO_FORWARD;
+	}
+	
+	if(wall_get(curY, curX, (dir + 1) % 4) == false &&
+			d[curY + dy[(dir + 1) % 4]][curX + dx[(dir + 1) % 4]] == d[curY][curX] - 1) {
+		// TurnLeft
+		dir = (dir + 1) % 4;
+		return TURN_LEFT;
+	}
+
+	if(wall_get(curY, curX, (dir + 3) % 4) == false &&
+			d[curY + dy[(dir + 3) % 4]][curX + dx[(dir + 3) % 4]] == d[curY][curX] - 1) {
+		// TurnRight
+		dir = (dir + 3) % 4;
+		return TURN_RIGHT;
+	}
+
+	if(wall_get(curY, curX, (dir + 2) % 4) == false &&
+			d[curY + dy[(dir + 2) % 4]][curX + dx[(dir + 2) % 4]] == d[curY][curX] - 1) {
+		// TurnLeft
+		// 後ろを向くのが最適解の場合は、とりあえず左を向いておいて、次のステップに任せる
+		return TURN_LEFT;
+	}
+
+	return NO_OPERATION;
 }
 
 void agent_learn(void) {
@@ -131,12 +229,12 @@ void agent_learn(void) {
 			}
 
 			// 周囲4マスの壁の状態が分かっていたらvisibleにする処理
-			if(!visible_get(ny, nx)) {
+			if(visible_get(ny, nx) == false) {
 				int n = 0;
 				for(int l = 0; l < 4; ++l) {
 					int my = ny + dy[l];
 					int mx = nx + dx[l];
-					if(!check_pos(my, mx) || visible_get(my, mx)) {
+					if(check_pos(my, mx) == false || visible_get(my, mx)) {
 						++n;
 					}
 				}
