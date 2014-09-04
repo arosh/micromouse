@@ -373,17 +373,15 @@ ISR(TIMER1_COMPA_vect){
 // エンコーダ用割り込み
 ISR(TIMER3_COMPA_vect)
 {
-	
 	static int sensor_count = 0;
+	sensor_count++;
 	
 	if(sensor_count >= 250){
 		Init_ADC_get();
 		sensor_count = 0;
 	}
-	sensor_count++;
 	
 	encoder();
-
 }
 
 int main(void)
