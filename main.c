@@ -107,20 +107,16 @@ volatile int pulse_velocity_right;
 
 //ターンに必要なフラグ達
 volatile char turn_flag = 0;
-volatile char prefrance_flag;
-volatile long int preferrance_turn_right = 0;
-volatile long int preferrance_turn_left  = 0;
+volatile char prefer_turn_flag = 0;
+volatile long int prefer_turn_right = 0;
+volatile long int prefer_turn_left  = 0;
 
 volatile int error_turn_right;
 volatile int error_turn_left;
 
 volatile int turn_select = -1;	// 1なら右回転	-1なら左回転
 
-	static int spd_R[3] = {0, 0, 0};
-	static int spd_L[3] = {0, 0, 0};
-	float ave_spd_R = 0;
-	float ave_spd_L = 0;
-	static int time = 0;
+volatile char hips_flag = 0;
 
 // センサ用割り込み
 ISR(TIMER1_COMPA_vect){
@@ -132,11 +128,11 @@ ISR(TIMER1_COMPA_vect){
 	long int now_pulse_R = Right_RotaryEncorder_val;
 	long int now_pulse_L = Left_RotaryEncorder_val;
 	
-	//static int time = 0;
-	//static int spd_R[3] = {0, 0, 0};
-	//static int spd_L[3] = {0, 0, 0};
-	//float ave_spd_R = 0;
-	//float ave_spd_L = 0;
+	static int time = 0;
+	static int spd_R[3] = {0, 0, 0};
+	static int spd_L[3] = {0, 0, 0};
+	float ave_spd_R = 0;
+	float ave_spd_L = 0;
 	int i;
 	
 	//この割り込み関数は10msごとに読み込まれるのでパルスカウントの差を10ms[0.01s]で割ることでパルス速度[pulse/s]を求めることができる
@@ -166,15 +162,17 @@ ISR(TIMER1_COMPA_vect){
 	sensor_distance_R  = sensor_distance_convert_R(Right_Sensor_val);
 	int sensor_distance_AVE_LF_RF = ((int)sensor_distance_LF+(int)sensor_distance_RF)/2;
 	
+	
+	
 	//等速制御に必要な変数達------------------------------------------------------------
 	
 	//速度の誤差にかけるゲイン
-	const float Kp_velocity_right = 0.08;
-	const float Kp_velocity_left  = 0.09;
+	const float Kp_velocity_right = 0.07;
+	const float Kp_velocity_left  = 0.085;
 	
 	//左右の移動量の誤差にかけるゲイン
-	const float Kp_movement_right = 0.30;
-	const float Kp_movement_left  = 0.30;
+	const float Kp_movement_right = 0.26;
+	const float Kp_movement_left  = 0.26;
 	
 	//左右のホイールの移動量
 	static long int movement_right = 0;
@@ -214,8 +212,8 @@ ISR(TIMER1_COMPA_vect){
 	static int I_sum_down_right = 0;
 	static int I_sum_down_left  = 0;
 	
-	const char prefarance_sensor_right = 20;
-	const char prefarance_sensor_left  = 20; 
+	const char prefarance_sensor_right = 40;
+	const char prefarance_sensor_left  = 40; 
 	
 	int error_sensor_right;
 	int error_sensor_left;
@@ -228,15 +226,12 @@ ISR(TIMER1_COMPA_vect){
 	
 	
 	//90度回転に必要な変数達--------------------------------------------------------------------------
-	const float Kp_turn_right = 0.55;
-	const float Kp_turn_left  = 0.61;
+	const float Kp_turn_right = 0.50;
+	const float Kp_turn_left  = 0.55;
 	const float Ki_turn_right = 0;
 	const float Ki_turn_left  = 0;
-	const float Kd_turn_right = 0.15;
-	const float Kd_turn_left  = 0.15;
-	
-	//int error_turn_right;
-	//int error_turn_left;
+	const float Kd_turn_right = 0.1;
+	const float Kd_turn_left  = 0.1;
 	
 	static int old_error_turn_right = 0;
 	static int old_error_turn_left = 0;
@@ -252,6 +247,21 @@ ISR(TIMER1_COMPA_vect){
 	
 	int D_control_turn_right;
 	int D_control_turn_left;
+	
+	
+	//ケツをつけて位置補正するために必要な変数達
+	
+	const float Kp_hips_R = 0.1;
+	const float Kp_hips_L = 0.1;
+	
+	int prefer_hips_R = 135;
+	int prefer_hips_L = 135;
+	
+	int error_hips_R;
+	int error_hips_L;
+	
+	int P_control_hips_R;
+	int P_control_hips_L;
 	
 	
 	
@@ -308,71 +318,79 @@ ISR(TIMER1_COMPA_vect){
 			if((ave_spd_R == 0) && (ave_spd_L == 0)){
 				
 				turn_flag = 1;
-				prefrance_flag = 1;
+				prefer_turn_flag = 1;
 				movement_left  = 0;
 				movement_right = 0;
 				
 			}
 		}
 	}
+
 	//ターンする
 	else{
 		
-		//ターンの最初目標位置を設定する
-		if(prefrance_flag == 1){
+		//ターンするとき
+		if(turn_flag == 1){
+			//ターンの最初目標位置を設定する
+			if(prefer_turn_flag == 1){
 			
-			preferrance_turn_right = Right_RotaryEncorder_val + (-turn_select * 180);		//タイヤ間円の円周の1/4がパルスカウントの180と一致する
-			preferrance_turn_left  = Left_RotaryEncorder_val  + (turn_select  * 180);
+				prefer_turn_right = Right_RotaryEncorder_val + (-turn_select * 180);		//タイヤ間円の円周の1/4がパルスカウントの180と一致する
+				prefer_turn_left  = Left_RotaryEncorder_val  + (turn_select  * 180);
 			
-			prefrance_flag = 0;
+				prefer_turn_flag = 0;
 		
-		}
-		
-		error_turn_right = preferrance_turn_right - Right_RotaryEncorder_val;
-		error_turn_left  = preferrance_turn_left  - Left_RotaryEncorder_val;
-		
-		i_sum_turn_left  += error_turn_left;
-		i_sum_turn_right += error_turn_right;
-		
-		P_control_turn_right = (int)(Kp_turn_right * error_turn_right);
-		P_control_turn_left  = (int)(Kp_turn_left  * error_turn_left);
-		
-		I_control_turn_right = (int)(Ki_turn_right * i_sum_turn_right);
-		I_control_turn_left  = (int)(Ki_turn_left  * i_sum_turn_left);
-		
-		D_control_turn_right = (int)(Kd_turn_right * (error_turn_right - old_error_turn_right));
-		D_control_turn_left  = (int)(Kd_turn_left  * (error_turn_left  - old_error_turn_left));
-		
-		motor_right(P_control_turn_right + D_control_turn_right + I_control_turn_right);
-		motor_left(P_control_turn_left + D_control_turn_left + I_control_turn_left);
-		
-		//過去の偏差を更新
-		old_error_turn_left  = error_turn_left;
-		old_error_turn_right = error_turn_right;
-		
-		//パルス速度が0になったとき停止したことになるので
-		if((ave_spd_R == 0) && (ave_spd_L == 0) && (abs(error_turn_left) <= 35) && (abs(error_turn_right) <= 35)){
-			
-			motor_brake_left();
-			motor_brake_right();
-			
-			old_error_turn_left  = 0;
-			old_error_turn_right = 0;
-			i_sum_turn_right = 0;
-			i_sum_turn_left  = 0;
-			
-			//まだ前に壁が在ればフラグを立てる
-			if(sensor_distance_AVE_LF_RF <= 35){
-				turn_flag = 1;
-				prefrance_flag = 1;
 			}
-			//前に壁がなければフラグを消す
-			else{
+		
+			error_turn_right = prefer_turn_right - Right_RotaryEncorder_val;
+			error_turn_left  = prefer_turn_left  - Left_RotaryEncorder_val;
+		
+			i_sum_turn_left  += error_turn_left;
+			i_sum_turn_right += error_turn_right;
+		
+			P_control_turn_right = (int)(Kp_turn_right * error_turn_right);
+			P_control_turn_left  = (int)(Kp_turn_left  * error_turn_left);
+		
+			I_control_turn_right = (int)(Ki_turn_right * i_sum_turn_right);
+			I_control_turn_left  = (int)(Ki_turn_left  * i_sum_turn_left);
+		
+			D_control_turn_right = (int)(Kd_turn_right * (error_turn_right - old_error_turn_right));
+			D_control_turn_left  = (int)(Kd_turn_left  * (error_turn_left  - old_error_turn_left));
+		
+			motor_right(P_control_turn_right + D_control_turn_right + I_control_turn_right);
+			motor_left(P_control_turn_left + D_control_turn_left + I_control_turn_left);
+		
+			//過去の偏差を更新
+			old_error_turn_left  = error_turn_left;
+			old_error_turn_right = error_turn_right;
+		
+			//パルス速度が0になったとき停止したことになるので
+			if((ave_spd_R == 0) && (ave_spd_L == 0) && (abs(error_turn_left) <= 35) && (abs(error_turn_right) <= 35)){
+			
+				motor_brake_left();
+				motor_brake_right();
+			
+				turn_flag = 0;
+				hips_flag = 1;
+				old_error_turn_left  = 0;
+				old_error_turn_right = 0;
+				i_sum_turn_right = 0;
+				i_sum_turn_left  = 0;
+			}
+		}
+		if(hips_flag == 1){
+			
+			motor_left(-45);
+			motor_right(-45);
+					
+			if((ave_spd_R == 0) && (ave_spd_L == 0)){
+				hips_flag = 0;
 				turn_flag = 0;
 			}
 		}
 	}
 }
+
+			
 
 // エンコーダ用割り込み
 ISR(TIMER3_COMPA_vect)
