@@ -35,6 +35,7 @@
 #include <avr/io.h>
 #include "avr_tools.h"
 #include "avr_lcd.h"
+#include <stdlib.h>
 
 //文字を全消去する
 void lcd_clear(void)
@@ -133,17 +134,28 @@ void lcd_data(int asci)							//4bitずつ送信
 // 例: lcd_number(321, 3) => 321
 //     lcd_number(321, 2) => 21
 //     lcd_number(321, 4) => 0321
-void lcd_number(unsigned int value, int digit) {
+void lcd_number(long int value, int digit) {
 	int i;
-	unsigned int base = 1;
+	long int base = 1;
 
 	for(i = 0; i < digit - 1; ++i) {
 		base *= 10;
 	}
-
-	for(i = 0; i < digit; ++i) {
-		lcd_data(0x30 + (value / base) % 10);
-		base /= 10;
+	
+	if(value >= 0){
+		lcd_str(" ");
+		for(i = 0; i < digit; ++i) {
+			lcd_data(0x30 + (value / base) % 10);
+			base /= 10;
+		}
+	}
+	else{
+		value = abs(value);
+		lcd_str("-");
+		for(i = 0; i < digit; ++i) {
+			lcd_data(0x30 + (value / base) % 10);
+			base /= 10;
+		}
 	}
 }
 // vim: noet ts=4 sw=4 sts=0
