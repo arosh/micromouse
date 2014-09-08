@@ -111,8 +111,9 @@ volatile int turn_select = -1;	// 1なら右回転	-1なら左回転
 
 volatile char hips_flag = 0;
 
+// enumを使って書き換えるべき
 volatile char mode = 1;
-volatile int time_sips;
+volatile int time_sips; // hipsが呼ばれると1増える
 volatile char old_mode = 1;
 volatile char time_tyoi;
 
@@ -171,35 +172,32 @@ void one_forward(void)
 		//目標パルス速度と現在のパルス速度の誤差
 		float error_velocity_left;
 		float error_velocity_right;
-	
-		//左右の移動量の誤差
-		int error_movement_left;
-		int error_movement_right;
-	
-		//目標パルス速度にするための制御量
-		int control_velocity_right;
-		int control_velocity_left;
-	
-		//左右の移動量の誤差に対する制御量
-		int control_movement_right;
-		int control_movement_left;
-	
 		//左右の速度の誤差
 		error_velocity_left  = preferrance_pluse_velocity_left  - ave_spd_L;
 		error_velocity_right = preferrance_pluse_velocity_right - ave_spd_R;
 	
 		//左右の移動量の誤差
+		int error_movement_left;
+		int error_movement_right;
+		//左右の移動量の誤差
 		error_movement_left  = movement_right - movement_left;
 		error_movement_right = movement_left - movement_right;
 	
 		//目標パルス速度にするための制御量
+		int control_velocity_right;
+		int control_velocity_left;
+		//目標パルス速度にするための制御量
 		control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
 		control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
 	
+		//左右の移動量の誤差に対する制御量
+		int control_movement_right;
+		int control_movement_left;
 		//左右の壁の誤差に対する制御量
 		control_movement_right = (int)(Kp_movement_right * error_movement_right);
 		control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
 	
+		// QUESTION: 線形に足し合わせる以外にも方法はあるけど…
 		motor_right(control_velocity_right + control_movement_right);
 		motor_left(control_velocity_left  + control_movement_left);
 	}
@@ -207,6 +205,7 @@ void one_forward(void)
 		motor_brake_left();
 		motor_brake_right();
 		
+		// QUESTION: この間に割り込みが発生したらどうなりますか？
 		_delay_ms(1000);
 		
 		movement_left  = 0;
@@ -214,6 +213,7 @@ void one_forward(void)
 	}
 }
 
+// ケツを付けた状態から、少し前進する
 void forward_hips(void)
 {
 	if((movement_right <= 50) && (movement_left <= 50)){
@@ -231,32 +231,27 @@ void forward_hips(void)
 		
 		//目標パルス速度と現在のパルス速度の誤差
 		float error_velocity_left;
+		error_velocity_left  = preferrance_pluse_velocity_left  - ave_spd_L;
 		float error_velocity_right;
+		error_velocity_right = preferrance_pluse_velocity_right - ave_spd_R;
 		
 		//左右の移動量の誤差
 		int error_movement_left;
 		int error_movement_right;
-		
-		//目標パルス速度にするための制御量
-		int control_velocity_right;
-		int control_velocity_left;
-		
-		//左右の移動量の誤差に対する制御量
-		int control_movement_right;
-		int control_movement_left;
-		
-		//左右の速度の誤差
-		error_velocity_left  = preferrance_pluse_velocity_left  - ave_spd_L;
-		error_velocity_right = preferrance_pluse_velocity_right - ave_spd_R;
-		
 		//左右の移動量の誤差
 		error_movement_left  = movement_right - movement_left;
 		error_movement_right = movement_left - movement_right;
 		
 		//目標パルス速度にするための制御量
+		int control_velocity_right;
+		int control_velocity_left;
+		//目標パルス速度にするための制御量
 		control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
 		control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
 		
+		//左右の移動量の誤差に対する制御量
+		int control_movement_right;
+		int control_movement_left;
 		//左右の壁の誤差に対する制御量
 		control_movement_right = (int)(Kp_movement_right * error_movement_right);
 		control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
@@ -274,8 +269,6 @@ void forward_hips(void)
 		movement_right = 0;
 	}
 }
-
-
 
 void forward(void)
 {
@@ -294,38 +287,33 @@ void forward(void)
 	//目標パルス速度と現在のパルス速度の誤差
 	float error_velocity_left;
 	float error_velocity_right;
-	
-	//左右の移動量の誤差
-	int error_movement_left;
-	int error_movement_right;
-	
-	//目標パルス速度にするための制御量
-	int control_velocity_right;
-	int control_velocity_left;
-	
-	//左右の移動量の誤差に対する制御量
-	int control_movement_right;
-	int control_movement_left;
-	
 	//左右の速度の誤差
 	error_velocity_left  = preferrance_pluse_velocity_left  - ave_spd_L;
 	error_velocity_right = preferrance_pluse_velocity_right - ave_spd_R;
 	
 	//左右の移動量の誤差
+	int error_movement_left;
+	int error_movement_right;
+	//左右の移動量の誤差
 	error_movement_left  = movement_right - movement_left;
 	error_movement_right = movement_left - movement_right;
 	
 	//目標パルス速度にするための制御量
+	int control_velocity_right;
+	int control_velocity_left;
+	//目標パルス速度にするための制御量
 	control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
 	control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
 	
+	//左右の移動量の誤差に対する制御量
+	int control_movement_right;
+	int control_movement_left;
 	//左右の壁の誤差に対する制御量
 	control_movement_right = (int)(Kp_movement_right * error_movement_right);
 	control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
 	
 	motor_right(control_velocity_right + control_movement_right);
 	motor_left(control_velocity_left  + control_movement_left);
-	
 }
 
 void speed_down(void)
@@ -338,13 +326,11 @@ void speed_down(void)
 	
 	int error_sensor_right;
 	int error_sensor_left;
-	
-	int P_control_down_right;
-	int P_control_down_left;
-	
 	error_sensor_right = abs(prefarance_sensor_right - sensor_distance_RF);
 	error_sensor_left  = abs(prefarance_sensor_left  - sensor_distance_LF);
 	
+	int P_control_down_right;
+	int P_control_down_left;
 	P_control_down_right = (int)(Kp_down_right * error_sensor_right);
 	P_control_down_left  = (int)(Kp_down_left  * error_sensor_left);
 	
@@ -353,7 +339,6 @@ void speed_down(void)
 	
 	motor_brake_right();
 	motor_brake_left();
-	
 }
 
 void turn_right(void)
@@ -443,7 +428,6 @@ void turn_left(void)
 	//過去の偏差を更新
 	old_error_turn_left  = error_turn_left;
 	old_error_turn_right = error_turn_right;
-	
 }
 
 void hips(void)
@@ -465,12 +449,11 @@ void hips(void)
 	time_sips++;
 }
 
-
 int mode_sel(void)
 {
 	bool wall_r = sensor_distance_R < 80;
 	bool wall_l = sensor_distance_L < 80;
-	bool wall_f = (sensor_distance_LF + sensor_distance_RF) / 2 < 35;
+	bool wall_f = sensor_distance_AVE_LF_RF < 35;
 	
 	if(wall_f == false) {
 		return 1;
@@ -490,29 +473,68 @@ int mode_sel(void)
 	}
 }
 
-// センサ用割り込み
+bool is_stop_now(void) {
+	return ave_spd_R == 0 && ave_spd_L == 0;
+}
+
+// 姿勢制御用割り込み
 ISR(TIMER1_COMPA_vect){
-	
+	bool change_state = false;
+
 	ave_speed();		//速度の平均をとる
 	sensor_convert();	//AD変換値を距離[mm]に変換
-	
-	//char old_mode = 0;
-	
-	if(((ave_spd_R == 0) && (ave_spd_L == 0) && (abs(error_turn_left) <= 35) && (abs(error_turn_right) <= 35)) ||
-		((ave_spd_R == 0) && (ave_spd_L == 0) && (time_sips >= 40)) ||
-		 ((ave_spd_L == 0) && (ave_spd_R == 0) && (mode == 1)) || ((ave_spd_L == 0) && (ave_spd_R == 0) && (mode == 6))){
 
+	// モードを移行する条件
+	// * turn_leftもしくはturn_rightが終わって、？
+	// * ケツを付けるモードに移行してから十分に時間が経過して、止まっているとき
+	// * 直進モードの状態で止まった時
+	// * ケツを付けてから少し前進するモードで止まった時
+
+	// turn_leftやturn_rightのモードが終わった時
+	// QUESTION: time_sipsみたいに数えたらアカンのか？
+	if((mode == 2 || mode == 3 || mode == 4)
+			&& is_stop_now()
+			&& abs(error_turn_left) <= 35
+			&& abs(error_turn_right) <= 35) {
+		change_state = true;
+	}
+
+	// ケツを付けるモードに移行してから十分に時間が経過して、止まっているとき
+	if(mode == 5
+			&& is_stop_now()
+			&& time_sips >= 40) {
+		change_state = true;
+	}
+
+	// 1マス直進モードの状態で止まった時
+	// QUESTION: time_sipsみたいに数えなくて良いのか？
+	if(mode == 1
+			&& is_stop_now()) {
+		change_state = true;
+	}
+
+	// ケツを付けた状態で、少しだけ移動してから止まった時
+	// QUESTION: time_sipsみたいに数えなくて良いのか？
+	if(mode == 6
+			&& is_stop_now()) {
+		change_state = true;
+	}
+	
+	if(change_state) {
 		time_sips = 0;
 		
+		old_mode = mode;
 		mode = mode_sel();
 		
-		if((old_mode == 2) || (old_mode == 3) || (old_mode == 4)){
+		// ターンしたらとりあえずケツを付けておく
+		// QUESTION: これ本当に正しい？
+		if(old_mode == 2 || old_mode == 3 || old_mode == 4){
 			mode = 5;
 		}
+		// ケツを付けたら少し前進する
 		if(old_mode == 5){
 			mode = 6;
 		}
-		old_mode = mode;
 	}
 	
 	switch(mode){
@@ -551,7 +573,7 @@ ISR(TIMER1_COMPA_vect){
 
 			
 
-// エンコーダ用割り込み
+// エンコーダとセンサ用割り込み
 ISR(TIMER3_COMPA_vect)
 {
 	static int sensor_count = 0;
