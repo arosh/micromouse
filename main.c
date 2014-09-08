@@ -30,12 +30,6 @@ void print_RotaryEncorder(void);
 //各センサの値とロータリーエンコーダのカウント数を同時にLCDに表示
 void print_all_sensor(void);
 
-//timer1のレジスタ設定
-void Init_Timer1(void);
-
-//timer3のレジスタ設定
-void Init_Timer3(void);
-
 //エンコーダ設定
 void encoder(void);
 
@@ -80,12 +74,11 @@ int pulsevelocity_PWM_convert_L(int x)
 	return 0.025 * x + 11.967;
 }
 
-
 volatile float sensor_distance_LF;
 volatile float sensor_distance_RF; 
 volatile float sensor_distance_L;
 volatile float sensor_distance_R;
-volatile int sensor_distance_AVE_LF_RF;
+volatile float sensor_distance_AVE_LF_RF;
 
 //ロータリーエンコーダの値を格納する変数
 volatile long int Left_RotaryEncorder_val  = 0;
@@ -157,7 +150,7 @@ void sensor_convert(void)
 	sensor_distance_RF = sensor_distance_convert_RF(RightFront_Sensor_val);
 	sensor_distance_L  = sensor_distance_convert_L(Left_Sensor_val);
 	sensor_distance_R  = sensor_distance_convert_R(Right_Sensor_val);
-	int sensor_distance_AVE_LF_RF = ((int)sensor_distance_LF+(int)sensor_distance_RF)/2;
+	sensor_distance_AVE_LF_RF = (sensor_distance_LF + sensor_distance_RF) / 2;
 }
 
 void one_forward(void)
