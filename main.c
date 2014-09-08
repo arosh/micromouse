@@ -12,12 +12,11 @@
 #include "avr_motor.h"
 #include "avr_adc.h"
 #include "interrupt.h"
+#include "serial.h"
 
 #include <math.h>
 #include <stdlib.h>
 #include <stdbool.h>
-
-void serial_number(long int value, int digit);
 
 //各スイッチのテスト
 void switch_test(void);
@@ -44,20 +43,6 @@ void encoder(void);
 void beep(void);
 void beep_start(void);
 void beep_end(void);
-
-void rs_putc (char c)
-{
-	loop_until_bit_is_set(UCSR0A, UDRE0); //UDREビットが1になるまで待つ
-	UDR0 = c;
-}
-
-void rs_puts (char *st)
-{
-	while (*st) {
-		rs_putc (*st);
-		if (*(st++) == '\n') rs_putc('\r');
-	}
-}
 
 //AD変換値を距離[mm]に変換(RF)
 float sensor_distance_convert_RF(int x)
@@ -679,11 +664,9 @@ int main(void)
 	Init_Timer1();
 	//3:エンコーダ読み取り+姿勢制御
 	Init_Timer3();
-	
-	UBRR0  = 129;
-	UCSR0A = 0b00000000;
-	UCSR0B = 0b00011000;
-	UCSR0C = 0b00000110;
+
+	// シリアル通信初期化
+	Init_Serial();
 	
 	//AD変換レジスタ設定
 	loop_until_bit_is_clear(PINB,PINB2);		//スタートスイッチ(青色)が押されるまで待機
@@ -840,29 +823,4 @@ void switch_test(void)
 		lcd_pos(0,0);
 	}
 }
-
-void serial_number(long int value, int digit) {
-	int i;
-	long int base = 1;
-
-	for(i = 0; i < digit - 1; ++i) {
-		base *= 10;
-	}
-	
-	if(value >= 0){
-		for(i = 0; i < digit; ++i) {
-			rs_putc(0x30 + (value / base) % 10);
-			base /= 10;
-		}
-	}
-	else{
-		value = abs(value);
-		rs_putc('-');
-		for(i = 0; i < digit; ++i) {
-			rs_putc(0x30 + (value / base) % 10);
-			base /= 10;
-		}
-	}
-}
-
 // vim: noet ts=4 sw=4 sts=0
