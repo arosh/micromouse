@@ -143,6 +143,7 @@ void lcd_number(long int value, int digit) {
 	}
 	
 	if(value >= 0){
+		lcd_str(" ");
 		for(i = 0; i < digit; ++i) {
 			lcd_data(0x30 + (value / base) % 10);
 			base /= 10;
@@ -156,7 +157,5 @@ void lcd_number(long int value, int digit) {
 			base /= 10;
 		}
 	}
-	
-	
 }
 // vim: noet ts=4 sw=4 sts=0
