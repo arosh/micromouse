@@ -4,17 +4,17 @@
 #include <stdint.h>
 
 // マップに関するパラメータ
-#define MAP_SIZE 16
+#define MAP_SIZE 3
 
 #define START_X 0
-#define START_Y 15
+#define START_Y 2
 // 方向は 上:0 左:1 下:2 右:3 で指定
 #define START_DIR 0
 
-#define GOAL_X 7
-#define GOAL_Y 7
-#define GOAL_W 2
-#define GOAL_H 2
+#define GOAL_X 2
+#define GOAL_Y 0
+#define GOAL_W 1
+#define GOAL_H 1
 
 enum action_t {
   GO_FORWARD, TURN_LEFT, TURN_RIGHT, NO_OPERATION

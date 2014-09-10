@@ -331,30 +331,44 @@ void agent_learn(void) {
 
 #if TEST
 uint8_t sensor_get(void) {
-	return 0;
+	bool w[3][3][4] = {
+		{ { 1, 1, 1, 0 }, { 1, 0, 1, 1 }, { 1, 1, 0, 1 } },
+		{ { 1, 1, 0, 0 }, { 1, 0, 1, 0 }, { 0, 0, 1, 1 } },
+		{ { 0, 1, 1, 1 }, { 1, 1, 1, 0 }, { 1, 0, 1, 1 } }
+	};
+	uint8_t r = 0;
+	if(w[curY][curX][dir]) sbi(r,0);
+	if(w[curY][curX][(dir+1)%4]) sbi(r,1);
+	if(w[curY][curX][(dir+3)%4]) sbi(r,3);
+	return r;
 }
 #include <stdio.h>
 int main(void) {
 	agent_init();
-	for(int y = 0; y < size; ++y) {
-		for(int x = 0; x < size; ++x) {
-			putchar(' ');
-			putchar(wall_get(y,x,0) ? '-' : ' ');
-			putchar(' ');
+	while(1) {
+		agent_learn();
+		enum action_t act = agent_explore(true);
+		bool end = false;
+		switch(act) {
+			case GO_FORWARD:
+				puts("GO_FORWARD");
+				break;
+
+			case TURN_LEFT:
+				puts("TURN_LEFT");
+				break;
+
+			case TURN_RIGHT:
+				puts("TURN_RIGHT");
+				break;
+
+			case NO_OPERATION:
+				puts("NO_OPERATION");
+				end = true;
+				break;
 		}
-		putchar('\n');
-		for(int x = 0; x < size; ++x) {
-			putchar(wall_get(y,x,1) ? '|' : ' ');
-			putchar(' ');
-			putchar(wall_get(y,x,3) ? '|' : ' ');
-		}
-		putchar('\n');
-		for(int x = 0; x < size; ++x) {
-			putchar(' ');
-			putchar(wall_get(y,x,2) ? '-' : ' ');
-			putchar(' ');
-		}
-		putchar('\n');
+		if(end) break;
+		char c = getchar();
 	}
 	return 0;
 }
