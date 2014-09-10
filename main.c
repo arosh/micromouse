@@ -16,8 +16,6 @@
 #include "sensor.h"
 #include "agent.h"
 
-volatile unsigned loop_count = 0;
-
 void serial_number(long int value, int digit);
 
 //各スイッチのテスト
@@ -120,7 +118,11 @@ uint8_t sensor_get(void){
 	if(wall_r == 1){
 		sbi(x, 2);
 	}
+	
+	return x;
 }
+
+volatile unsigned loop_count;
 
 //ロータリーエンコーダの値を格納する変数
 volatile long int Left_RotaryEncorder_val  = 0;
@@ -156,6 +158,7 @@ volatile char hips_flag = 0;
 volatile char mode = 1;
 volatile int time_hips;
 volatile char old_mode = 0;
+volatile bool need_hips;
 
 void ave_speed(void)
 {
@@ -253,58 +256,52 @@ void one_forward(void)
 
 void forward_hips(void)
 {
-	if((movement_right <=50) && (movement_left <= 50)){
-		//速度の誤差にかけるゲイン
-		const float Kp_velocity_right = 0.07;
-		const float Kp_velocity_left  = 0.085;
+	//速度の誤差にかけるゲイン
+	const float Kp_velocity_right = 0.07;
+	const float Kp_velocity_left  = 0.085;
 		
-		//左右の移動量の誤差にかけるゲイン
-		const float Kp_movement_right = 0.26;
-		const float Kp_movement_left  = 0.26;
+	//左右の移動量の誤差にかけるゲイン
+	const float Kp_movement_right = 0.26;
+	const float Kp_movement_left  = 0.26;
 		
-		//目標パルス速度
-		const int preferrance_pluse_velocity_right = 1600;
-		const int preferrance_pluse_velocity_left  = 1600;
+	//目標パルス速度
+	const int preferrance_pluse_velocity_right = 1600;
+	const int preferrance_pluse_velocity_left  = 1600;
 		
-		//目標パルス速度と現在のパルス速度の誤差
-		float error_velocity_left;
-		float error_velocity_right;
+	//目標パルス速度と現在のパルス速度の誤差
+	float error_velocity_left;
+	float error_velocity_right;
 		
-		//左右の移動量の誤差
-		int error_movement_left;
-		int error_movement_right;
+	//左右の移動量の誤差
+	int error_movement_left;
+	int error_movement_right;
 		
-		//目標パルス速度にするための制御量
-		int control_velocity_right;
-		int control_velocity_left;
+	//目標パルス速度にするための制御量
+	int control_velocity_right;
+	int control_velocity_left;
 		
-		//左右の移動量の誤差に対する制御量
-		int control_movement_right;
-		int control_movement_left;
+	//左右の移動量の誤差に対する制御量
+	int control_movement_right;
+	int control_movement_left;
 		
-		//左右の速度の誤差
-		error_velocity_left  = preferrance_pluse_velocity_left  - ave_spd_L;
-		error_velocity_right = preferrance_pluse_velocity_right - ave_spd_R;
+	//左右の速度の誤差
+	error_velocity_left  = preferrance_pluse_velocity_left  - ave_spd_L;
+	error_velocity_right = preferrance_pluse_velocity_right - ave_spd_R;
 		
-		//左右の移動量の誤差
-		error_movement_left  = movement_right - movement_left;
-		error_movement_right = movement_left - movement_right;
+	//左右の移動量の誤差
+	error_movement_left  = movement_right - movement_left;
+	error_movement_right = movement_left - movement_right;
 		
-		//目標パルス速度にするための制御量
-		control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
-		control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
+	//目標パルス速度にするための制御量
+	control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
+	control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
 		
-		//左右の壁の誤差に対する制御量
-		control_movement_right = (int)(Kp_movement_right * error_movement_right);
-		control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
+	//左右の壁の誤差に対する制御量
+	control_movement_right = (int)(Kp_movement_right * error_movement_right);
+	control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
 		
-		motor_right(control_velocity_right + control_movement_right);
-		motor_left(control_velocity_left  + control_movement_left);
-	}
-	else{
-		motor_brake_left();
-		motor_brake_right();
-	}
+	motor_right(control_velocity_right + control_movement_right);
+	motor_left(control_velocity_left  + control_movement_left);
 }
 
 
@@ -484,21 +481,25 @@ int mode_sel(void)
 	
 	if(wall_l == false) {
 		prefer_turn_flag = 1;
+		need_hips = wall_r;
 		return 3;
 	}
 	
 	if(wall_f == false) {
 		prefer_turn_flag = 0;
+		need_hips = false;
 		return 1;
 	}
 	
 	if(wall_r == false) {
 		prefer_turn_flag = 1;
+		need_hips = wall_l;
 		return 2;
 	}
 	
 	//180turn
 	prefer_turn_flag = 1;
+	need_hips = true;
 	return 4;
 }
 
@@ -669,66 +670,161 @@ int main(void)
 	
 	sei();		//割り込み許可
 	
-	sensor_convert();
-	mode = mode_sel();
+	motor_brake_left();
+	motor_brake_right();
+	_delay_ms(500);
+	loop_count = 0;
 	
 	while(1){
-		loop_count++;
-		
 		sensor_convert();	//AD変換値を距離[mm]に変換
 		
-		//lcd_clear();
-		lcd_pos(0,0);
-		lcd_str("mode");
-		lcd_pos(0,5);
-		lcd_number(mode, 1);
-		lcd_pos(0,8);
-		lcd_number(loop_count, 5);
-		//lcd_pos(1,0);
-		////lcd_number(movement_left, 5);
-		////lcd_pos(1,9);
-		////lcd_number(movement_right, 5);
-		//lcd_number(sensor_distance_L, 3);
-		//lcd_pos(1,4);
-		//lcd_number(sensor_distance_R, 3);
-		lcd_pos(0,0);
-		//
-		if(
-		((ave_spd_R == 0) && (ave_spd_L == 0) && (mode == 2 || mode == 3 || mode == 4) && (abs(error_turn_left) <= 40) && (abs(error_turn_right) <= 40)) ||
-		((ave_spd_R == 0) && (ave_spd_L == 0) && (mode == 5) && (time_hips >= 20)) ||
-		((mode == 1) && (abs(movement_right) >= 10) && (abs(movement_left) >= 10)) ||
-		((ave_spd_L == 0) && (ave_spd_R == 0) && (mode == 6) && (abs(movement_right) >= 10) && (abs(movement_left) >= 10)) ||
-		((mode == 7) && (sensor_distance_AVE_LF_RF <= 40))
-		){
-
+		mode = 1;
+		time_hips = 0;
+		movement_left  = 0;
+		movement_right = 0;
+		
+		while(!(abs(movement_left) >= 10 && abs(movement_right) >= 10 && sensor_distance_AVE_LF_RF <= 65) &&
+			  !(abs(movement_left) >= 550 && abs(movement_right) >= 550)) {
+				sensor_convert();
+				lcd_pos(0,0);
+				lcd_str("mode");
+				lcd_pos(0,5);
+				lcd_number(mode, 1);
+				lcd_pos(0,8);
+				lcd_number(loop_count, 5);
+				lcd_pos(1,0);
+				lcd_number(movement_left, 5);
+				lcd_pos(1,9);
+				lcd_number(movement_right, 5);
+		}
+		
+		mode = 7;
+		_delay_ms(500);
+		
+		mode = mode_sel();
+		if(mode == 4) {
 			time_hips = 0;
-									
+			movement_left  = 0;
+			movement_right = 0;
+		
+			while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 40 && abs(error_turn_right) <= 40)) {
+				sensor_convert();
+				lcd_pos(0,0);
+				lcd_str("mode");
+				lcd_pos(0,5);
+				lcd_number(mode, 1);
+				lcd_pos(0,8);
+				lcd_number(loop_count, 5);
+				lcd_pos(1,0);
+				lcd_number(movement_left, 5);
+				lcd_pos(1,9);
+				lcd_number(movement_right, 5);
+			}
+			
+			if(need_hips) {
+			
+				mode = 5;
+				time_hips = 0;
+				movement_left  = 0;
+				movement_right = 0;
+			
+				while(!(time_hips >= 50)) {
+					sensor_convert();
+					lcd_pos(0,0);
+					lcd_str("mode");
+					lcd_pos(0,5);
+					lcd_number(mode, 1);
+					lcd_pos(0,8);
+					lcd_number(loop_count, 5);
+					lcd_pos(1,0);
+					lcd_number(movement_left, 5);
+					lcd_pos(1,9);
+					lcd_number(movement_right, 5);
+				}
+			
+				mode = 6;
+				time_hips = 0;
+				movement_left  = 0;
+				movement_right = 0;
+			
+				while(!(abs(movement_left) >= 5 && abs(movement_right) >= 5)) {
+					sensor_convert();
+					lcd_pos(0,0);
+					lcd_str("mode");
+					lcd_pos(0,5);
+					lcd_number(mode, 1);
+					lcd_pos(0,8);
+					lcd_number(loop_count, 5);
+					lcd_pos(1,0);
+					lcd_number(movement_left, 5);
+					lcd_pos(1,9);
+					lcd_number(movement_right, 5);
+				}
+			}
+			
+			mode = mode_sel();
+		}
+		
+		if(mode == 2 || mode == 3) {
+		    time_hips = 0;
 			movement_left  = 0;
 			movement_right = 0;
 			
-			if((mode == 2) || (mode == 3) || (mode == 4)){
+			while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 40 && abs(error_turn_right) <= 40)) {
+				sensor_convert();
+				lcd_pos(0,0);
+				lcd_str("mode");
+				lcd_pos(0,5);
+				lcd_number(mode, 1);
+				lcd_pos(0,8);
+				lcd_number(loop_count, 5);
+				lcd_pos(1,0);
+				lcd_number(movement_left, 5);
+				lcd_pos(1,9);
+				lcd_number(movement_right, 5);
+			}
+			
+			if(need_hips) {
 				mode = 5;
-			}
-			else if(mode == 1 && sensor_distance_AVE_LF_RF <= 60){
-				mode = 7;
-			}
-			else if(mode == 5){
+				time_hips = 0;
+				movement_left  = 0;
+				movement_right = 0;
+			
+				while(!(time_hips >= 50)) {
+					sensor_convert();
+					lcd_pos(0,0);
+					lcd_str("mode");
+					lcd_pos(0,5);
+					lcd_number(mode, 1);
+					lcd_pos(0,8);
+					lcd_number(loop_count, 5);
+					lcd_pos(1,0);
+					lcd_number(movement_left, 5);
+					lcd_pos(1,9);
+					lcd_number(movement_right, 5);
+				}
+			
 				mode = 6;
-			}
-			else{
-				mode = mode_sel();
+				time_hips = 0;
+				movement_left  = 0;
+				movement_right = 0;
+			
+				while(!(abs(movement_left) >= 5 && abs(movement_right) >= 5)) {
+					sensor_convert();
+					lcd_pos(0,0);
+					lcd_str("mode");
+					lcd_pos(0,5);
+					lcd_number(mode, 1);
+					lcd_pos(0,8);
+					lcd_number(loop_count, 5);
+					lcd_pos(1,0);
+					lcd_number(movement_left, 5);
+					lcd_pos(1,9);
+					lcd_number(movement_right, 5);
+				}
 			}
 		}
-		
-		//serial_number(pulse_velocity_left, 5);
-		//rs_putc(',');
-		//serial_number(pulse_velocity_right, 5);
-		//rs_puts("\n\r");
-		//
-		//print_all_sensor();
-		//print_RotaryEncorder();
-		//Print_ADC();
-		//switch_test();
+				
 	}
 
 	return 0;
