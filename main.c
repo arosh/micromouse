@@ -1,9 +1,9 @@
 /*
- * main.c
- *
- * Created: 2014/04/07 21:16:13
- *  Author: UEKI
- */
+* main.c
+*
+* Created: 2014/04/07 21:16:13
+*  Author: UEKI
+*/
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include "avr_tools.h"
@@ -13,6 +13,10 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include "sensor.h"
+#include "agent.h"
+
+volatile unsigned loop_count = 0;
 
 void serial_number(long int value, int digit);
 
@@ -94,10 +98,29 @@ int pulsevelocity_PWM_convert_L(int x)
 
 
 volatile float sensor_distance_LF;
-volatile float sensor_distance_RF; 
+volatile float sensor_distance_RF;
 volatile float sensor_distance_L;
 volatile float sensor_distance_R;
-volatile int sensor_distance_AVE_LF_RF;
+volatile float sensor_distance_AVE_LF_RF;
+
+uint8_t sensor_get(void){
+	
+	bool wall_r = sensor_distance_R < 90;
+	bool wall_l = sensor_distance_L < 90;
+	bool wall_f = sensor_distance_AVE_LF_RF < 40;
+	
+	uint8_t x = 0;
+	
+	if(wall_f == 1){
+		sbi(x, 0);
+	}
+	if(wall_l == 1){
+		sbi(x, 1);
+	}
+	if(wall_r == 1){
+		sbi(x, 2);
+	}
+}
 
 //ロータリーエンコーダの値を格納する変数
 volatile long int Left_RotaryEncorder_val  = 0;
@@ -111,8 +134,8 @@ volatile int pulse_velocity_right;
 volatile int time = 0;
 volatile int spd_R[3] = {0, 0, 0};
 volatile int spd_L[3] = {0, 0, 0};
-float ave_spd_R = 0;
-float ave_spd_L = 0;
+volatile int ave_spd_R = 0;
+volatile int ave_spd_L = 0;
 
 volatile long int movement_right = 0;
 volatile long int movement_left  = 0;
@@ -131,9 +154,8 @@ volatile int turn_select = -1;	// 1なら右回転	-1なら左回転
 volatile char hips_flag = 0;
 
 volatile char mode = 1;
-volatile int time_sips;
-volatile char old_mode = 1;
-volatile char time_tyoi;
+volatile int time_hips;
+volatile char old_mode = 0;
 
 void ave_speed(void)
 {
@@ -144,8 +166,8 @@ void ave_speed(void)
 	int i;
 	
 	//この割り込み関数は10msごとに読み込まれるのでパルスカウントの差を10ms[0.01s]で割ることでパルス速度[pulse/s]を求めることができる
-	spd_R[time] = (now_pulse_R - old_pulse_R) / 0.01;
-	spd_L[time] = (now_pulse_L - old_pulse_L) / 0.01;
+	spd_R[time] = (now_pulse_R - old_pulse_R) * 100;
+	spd_L[time] = (now_pulse_L - old_pulse_L) * 100 ;
 	old_pulse_R = now_pulse_R;
 	old_pulse_L = now_pulse_L;
 	
@@ -154,10 +176,11 @@ void ave_speed(void)
 		time = 0;
 	}
 	
-	for(i = 0;i < 3;i++){
+	for(i = 0; i < 3;i++){
 		ave_spd_R += spd_R[i];
 		ave_spd_L += spd_L[i];
 	}
+	
 	ave_spd_R /= 3;
 	ave_spd_L /= 3;
 	
@@ -169,7 +192,7 @@ void sensor_convert(void)
 	sensor_distance_RF = sensor_distance_convert_RF(RightFront_Sensor_val);
 	sensor_distance_L  = sensor_distance_convert_L(Left_Sensor_val);
 	sensor_distance_R  = sensor_distance_convert_R(Right_Sensor_val);
-	int sensor_distance_AVE_LF_RF = ((int)sensor_distance_LF+(int)sensor_distance_RF)/2;
+	sensor_distance_AVE_LF_RF = (sensor_distance_LF+sensor_distance_RF)*0.5;
 }
 
 void one_forward(void)
@@ -178,64 +201,59 @@ void one_forward(void)
 		//速度の誤差にかけるゲイン
 		const float Kp_velocity_right = 0.07;
 		const float Kp_velocity_left  = 0.085;
-	
+		
 		//左右の移動量の誤差にかけるゲイン
 		const float Kp_movement_right = 0.26;
 		const float Kp_movement_left  = 0.26;
-	
+		
 		//目標パルス速度
 		const int preferrance_pluse_velocity_right = 1600;
 		const int preferrance_pluse_velocity_left  = 1600;
-	
+		
 		//目標パルス速度と現在のパルス速度の誤差
 		float error_velocity_left;
 		float error_velocity_right;
-	
+		
 		//左右の移動量の誤差
 		int error_movement_left;
 		int error_movement_right;
-	
+		
 		//目標パルス速度にするための制御量
 		int control_velocity_right;
 		int control_velocity_left;
-	
+		
 		//左右の移動量の誤差に対する制御量
 		int control_movement_right;
 		int control_movement_left;
-	
+		
 		//左右の速度の誤差
 		error_velocity_left  = preferrance_pluse_velocity_left  - ave_spd_L;
 		error_velocity_right = preferrance_pluse_velocity_right - ave_spd_R;
-	
+		
 		//左右の移動量の誤差
 		error_movement_left  = movement_right - movement_left;
 		error_movement_right = movement_left - movement_right;
-	
+		
 		//目標パルス速度にするための制御量
 		control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
 		control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
-	
+		
 		//左右の壁の誤差に対する制御量
 		control_movement_right = (int)(Kp_movement_right * error_movement_right);
 		control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
-	
+		
 		motor_right(control_velocity_right + control_movement_right);
 		motor_left(control_velocity_left  + control_movement_left);
 	}
 	else{
 		motor_brake_left();
 		motor_brake_right();
-		
-		_delay_ms(1000);
-		
-		movement_left  = 0;
-		movement_right = 0;
 	}
 }
 
 void forward_hips(void)
 {
-	if((movement_right <= 50) && (movement_left <= 50)){
+	if((movement_right <=50) && (movement_left <= 50)){
 		//速度の誤差にかけるゲイン
 		const float Kp_velocity_right = 0.07;
 		const float Kp_velocity_left  = 0.085;
@@ -286,11 +304,6 @@ void forward_hips(void)
 	else{
 		motor_brake_left();
 		motor_brake_right();
-		
-		_delay_ms(1000);
-		
-		movement_left  = 0;
-		movement_right = 0;
 	}
 }
 
@@ -348,31 +361,9 @@ void forward(void)
 }
 
 void speed_down(void)
-{
-	const float Kp_down_right = 0.60;
-	const float Kp_down_left  = 0.60;
-	
-	const char prefarance_sensor_right = 40;
-	const char prefarance_sensor_left  = 40;
-	
-	int error_sensor_right;
-	int error_sensor_left;
-	
-	int P_control_down_right;
-	int P_control_down_left;
-	
-	error_sensor_right = abs(prefarance_sensor_right - sensor_distance_RF);
-	error_sensor_left  = abs(prefarance_sensor_left  - sensor_distance_LF);
-	
-	P_control_down_right = (int)(Kp_down_right * error_sensor_right);
-	P_control_down_left  = (int)(Kp_down_left  * error_sensor_left);
-	
-	//motor_right(P_control_down_right);
-	//motor_left(P_control_down_left);
-	
+{	
 	motor_brake_right();
 	motor_brake_left();
-	
 }
 
 void turn_right(void)
@@ -466,114 +457,98 @@ void turn_left(void)
 }
 
 void hips(void)
-{	
-	const float Kp_hips_R = 0.1;
-	const float Kp_hips_L = 0.1;
-	
-	int prefer_hips_R = 135;
-	int prefer_hips_L = 135;
-	
-	int error_hips_R;
-	int error_hips_L;
-	
-	int P_control_hips_R;
-	int P_control_hips_L;
-	
+{
+	//const float Kp_hips_R = 0.1;
+	//const float Kp_hips_L = 0.1;
+	//
+	//int prefer_hips_R = 135;
+	//int prefer_hips_L = 135;
+	//
+	//int error_hips_R;
+	//int error_hips_L;
+	//
+	//int P_control_hips_R;
+	//int P_control_hips_L;
+	//
 	motor_left(-45);
 	motor_right(-45);
-	time_sips++;
+	time_hips++;
 }
 
 
 int mode_sel(void)
 {
-	bool wall_r = sensor_distance_R < 80;
-	bool wall_l = sensor_distance_L < 80;
-	bool wall_f = (sensor_distance_LF + sensor_distance_RF) / 2 < 35;
+	bool wall_r = sensor_distance_R < 90;
+	bool wall_l = sensor_distance_L < 90;
+	bool wall_f = sensor_distance_AVE_LF_RF < 40;
 	
-	if(wall_f == false) {
-		return 1;
-	}
-	else if(wall_r == false) {
-		prefer_turn_flag = 1;
-		return 2;
-	}
-	else if(wall_l == false) {
+	if(wall_l == false) {
 		prefer_turn_flag = 1;
 		return 3;
 	}
-	else {
-		//180turn
-		prefer_turn_flag = 1;
-		return 4;
+	
+	if(wall_f == false) {
+		prefer_turn_flag = 0;
+		return 1;
 	}
+	
+	if(wall_r == false) {
+		prefer_turn_flag = 1;
+		return 2;
+	}
+	
+	//180turn
+	prefer_turn_flag = 1;
+	return 4;
 }
 
 // センサ用割り込み
 ISR(TIMER1_COMPA_vect){
-	
 	ave_speed();		//速度の平均をとる
-	sensor_convert();	//AD変換値を距離[mm]に変換
-	
-	//char old_mode = 0;
-	
-	if(((ave_spd_R == 0) && (ave_spd_L == 0) && (abs(error_turn_left) <= 35) && (abs(error_turn_right) <= 35)) ||
-		((ave_spd_R == 0) && (ave_spd_L == 0) && (time_sips >= 40)) ||
-		 ((ave_spd_L == 0) && (ave_spd_R == 0) && (mode == 1)) || ((ave_spd_L == 0) && (ave_spd_R == 0) && (mode == 6))){
-
-		time_sips = 0;
-		
-		mode = mode_sel();
-		
-		if((old_mode == 2) || (old_mode == 3) || (old_mode == 4)){
-			mode = 5;
-		}
-		if(old_mode == 5){
-			mode = 6;
-		}
-		old_mode = mode;
-	}
+	//sensor_convert();	//AD変換値を距離[mm]に変換
 	
 	switch(mode){
 		
 		case 1:
-			movement_right += spd_R[time] * 0.01;	//速度を積分
-			movement_left  += spd_L[time] * 0.01;
-					
-			one_forward();
-			break;
+		movement_right += spd_R[time] * 0.01;	//速度を積分
+		movement_left  += spd_L[time] * 0.01;
+		
+		one_forward();
+		break;
 		
 		case 2:
-			turn_right();
-			break;
+		turn_right();
+		break;
 		
 		case 3:
-			turn_left();
-			break;
+		turn_left();
+		break;
 		
 		case 4:
-			turn_right();
-			break;
+		turn_right();
+		break;
 		
 		case 5:
-			hips();
-			break;
+		hips();
+		break;
 		
 		case 6:
-			movement_right += spd_R[time] * 0.01;	//速度を積分
-			movement_left  += spd_L[time] * 0.01;
-			
-			forward_hips();
-			break;
+		movement_right += spd_R[time] * 0.01;	//速度を積分
+		movement_left  += spd_L[time] * 0.01;
+		forward_hips();
+		break;
+		
+		case 7:
+		speed_down();
+		break;
 	}
 }
 
-			
+
 
 // エンコーダ用割り込み
 ISR(TIMER3_COMPA_vect)
 {
-	
 	static int sensor_count = 0;
 	
 	if(sensor_count >= 250){
@@ -587,84 +562,84 @@ ISR(TIMER3_COMPA_vect)
 }
 
 int main(void)
-{		
+{
 	cli();		//割り込み禁止
 	
 	/*
-	 * 簡単なPORTの説明(x:アルファベットABCD n:数字0123...)
-	 *
-	 * DDRx  方向レジスタ(0:入力 1:出力)
-	 * PORTx 出力レジスタ(入力の場合 0:プルアップ禁止 1:プルアップ有効)
-	 *					 (出力の場合 0:Low 1:High)
-	 * PINx  入力レジスタ
-	 *
-	 */
+	* 簡単なPORTの説明(x:アルファベットABCD n:数字0123...)
+	*
+	* DDRx  方向レジスタ(0:入力 1:出力)
+	* PORTx 出力レジスタ(入力の場合 0:プルアップ禁止 1:プルアップ有効)
+	*					 (出力の場合 0:Low 1:High)
+	* PINx  入力レジスタ
+	*
+	*/
 	
 	/*
-	 *	PORTA
-	 *
-	 * 0: 右前センサADC入力
-	 * 1: 右センサADC入力
-	 * 2: 左センサADC入力
-	 * 3: 左前センサADC入力
-	 *
-	 * 4: 左前センサのLED制御
-	 * 5: 左センサのLED制御
-	 * 6: 右センサのLED制御
-	 * 7: 右前センサのLED制御
-	 *
-	 */
+	*	PORTA
+	*
+	* 0: 右前センサADC入力
+	* 1: 右センサADC入力
+	* 2: 左センサADC入力
+	* 3: 左前センサADC入力
+	*
+	* 4: 左前センサのLED制御
+	* 5: 左センサのLED制御
+	* 6: 右センサのLED制御
+	* 7: 右前センサのLED制御
+	*
+	*/
 	DDRA  = 0b11110000;
 	PORTA = 0b00000000;		//ADCで使用する際はプルアップ禁止(値が変化するため)
 	
 	/*
-	 *	PORTB
-	 *
-	 * 0: Beep出力
-	 * 1: 橙スイッチ
-	 * 2: 青スイッチ(INT2 外部割込み)
-	 * 3: 右モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
-	 * 4: 右モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
-	 * 5: 書き込み用ISPに使用(MOSI)
-	 * 6: 書き込み用ISPに使用(MISO)
-	 * 7: 書き込み用ISPに使用(SCK)
-	 *
-	 */
+	*	PORTB
+	*
+	* 0: Beep出力
+	* 1: 橙スイッチ
+	* 2: 青スイッチ(INT2 外部割込み)
+	* 3: 右モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
+	* 4: 右モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
+	* 5: 書き込み用ISPに使用(MOSI)
+	* 6: 書き込み用ISPに使用(MISO)
+	* 7: 書き込み用ISPに使用(SCK)
+	*
+	*/
 	DDRB  = 0b00011001;
 	PORTB = 0b11100110;
 	
 	/*
-	 *	PORTC
-	 *
-	 * 0: LCD表示用(RSの切り替え 0:コマンド 1:データ)
-	 * 1: LCD表示用(Eのフラグ設定 このbitが立ちがるとLCDにデータが送信される)
-	 * 2: 左ロータリーエンコーダのパルス波Aを入力
-	 * 3: 左ロータリーエンコーダのパルス波Aを入力
-	 * 4: LCD表示用(データバス)
-	 * 5: LCD表示用(データバス)
-	 * 6: LCD表示用(データバス)
-	 * 7: LCD表示用(データバス)
-	 *
-	 */
+	*	PORTC
+	*
+	* 0: LCD表示用(RSの切り替え 0:コマンド 1:データ)
+	* 1: LCD表示用(Eのフラグ設定 このbitが立ちがるとLCDにデータが送信される)
+	* 2: 左ロータリーエンコーダのパルス波Aを入力
+	* 3: 左ロータリーエンコーダのパルス波Aを入力
+	* 4: LCD表示用(データバス)
+	* 5: LCD表示用(データバス)
+	* 6: LCD表示用(データバス)
+	* 7: LCD表示用(データバス)
+	*
+	*/
 	DDRC  = 0b11110011;
 	PORTC = 0b00001100;
 	
 	/*
-	 *	PORTD
-	 *
-	 * 0: シリアル通信(RXD)
-	 * 1: シリアル通信(TXD)
-	 * 2: 右ロータリーエンコーダのパルス波Aを入力
-	 * 3: 右ロータリーエンコーダのパルス波Bを入力
-	 * 4:
-	 * 5:
-	 * 6: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
-	 * 7: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
-	 *
-	 */
+	*	PORTD
+	*
+	* 0: シリアル通信(RXD)
+	* 1: シリアル通信(TXD)
+	* 2: 右ロータリーエンコーダのパルス波Aを入力
+	* 3: 右ロータリーエンコーダのパルス波Bを入力
+	* 4:
+	* 5:
+	* 6: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
+	* 7: 左モーター用PWM出力(PWM出力にするときは必ずDDRを1にすること)
+	*
+	*/
 	DDRD  = 0b11000000;
 	PORTD = 0b00001100;			//RE12D(ロータリーエンコーダの名前)は
-								//プルアップ不要らしいが念のためプルアップは有効に
+	//プルアップ不要らしいが念のためプルアップは有効に
 	
 	//LCD初期化
 	lcd_init();
@@ -679,10 +654,13 @@ int main(void)
 	//3:エンコーダ読み取り+姿勢制御
 	Init_Timer3();
 	
-	UBRR0  = 129;
-	UCSR0A = 0b00000000;
-	UCSR0B = 0b00011000;
-	UCSR0C = 0b00000110;
+	//AIの初期化
+	agent_init();
+	
+	//UBRR0  = 129;
+	//UCSR0A = 0b00000000;
+	//UCSR0B = 0b00011000;
+	//UCSR0C = 0b00000110;
 	
 	//AD変換レジスタ設定
 	loop_until_bit_is_clear(PINB,PINB2);		//スタートスイッチ(青色)が押されるまで待機
@@ -691,21 +669,56 @@ int main(void)
 	
 	sei();		//割り込み許可
 	
+	sensor_convert();
+	mode = mode_sel();
+	
 	while(1){
-
+		loop_count++;
+		
+		sensor_convert();	//AD変換値を距離[mm]に変換
+		
+		//lcd_clear();
 		lcd_pos(0,0);
 		lcd_str("mode");
-		lcd_pos(0,6);
+		lcd_pos(0,5);
 		lcd_number(mode, 1);
-		lcd_pos(0,9);
-		lcd_str("old");
-		lcd_pos(0,13);
-		lcd_number(old_mode, 1);
-		lcd_pos(1,1);
-		lcd_number(movement_left, 3);
-		lcd_pos(1,9);
-		lcd_number(movement_right, 3);
+		lcd_pos(0,8);
+		lcd_number(loop_count, 5);
+		//lcd_pos(1,0);
+		////lcd_number(movement_left, 5);
+		////lcd_pos(1,9);
+		////lcd_number(movement_right, 5);
+		//lcd_number(sensor_distance_L, 3);
+		//lcd_pos(1,4);
+		//lcd_number(sensor_distance_R, 3);
 		lcd_pos(0,0);
+		//
+		if(
+		((ave_spd_R == 0) && (ave_spd_L == 0) && (mode == 2 || mode == 3 || mode == 4) && (abs(error_turn_left) <= 40) && (abs(error_turn_right) <= 40)) ||
+		((ave_spd_R == 0) && (ave_spd_L == 0) && (mode == 5) && (time_hips >= 20)) ||
+		((mode == 1) && (abs(movement_right) >= 10) && (abs(movement_left) >= 10)) ||
+		((ave_spd_L == 0) && (ave_spd_R == 0) && (mode == 6) && (abs(movement_right) >= 10) && (abs(movement_left) >= 10)) ||
+		((mode == 7) && (sensor_distance_AVE_LF_RF <= 40))
+		){
+
+			time_hips = 0;
+									
+			movement_left  = 0;
+			movement_right = 0;
+			
+			if((mode == 2) || (mode == 3) || (mode == 4)){
+				mode = 5;
+			}
+			else if(mode == 1 && sensor_distance_AVE_LF_RF <= 60){
+				mode = 7;
+			}
+			else if(mode == 5){
+				mode = 6;
+			}
+			else{
+				mode = mode_sel();
+			}
+		}
 		
 		//serial_number(pulse_velocity_left, 5);
 		//rs_putc(',');
@@ -758,7 +771,7 @@ void encoder(void)
 
 //各センサの値とロータリーエンコーダのカウント数を同時にLCDに表示
 void print_all_sensor(void)
-{	
+{
 	sensor_distance_LF = (int)sensor_distance_convert_LF(LeftFront_Sensor_val);
 	sensor_distance_RF = (int)sensor_distance_convert_RF(RightFront_Sensor_val);
 	sensor_distance_L  = (int)sensor_distance_convert_L(Left_Sensor_val);
@@ -822,9 +835,9 @@ void print_RotaryEncorder(void)
 void switch_test(void)
 {
 	/*if(bit_is_clear(PINB,PINB1)){
-		lcd_clear();
-		lcd_str("orange");
-		lcd_pos(0,0);
+	lcd_clear();
+	lcd_str("orange");
+	lcd_pos(0,0);
 	}*/
 	if(bit_is_clear(PINB,PINB2)){
 		
@@ -865,13 +878,13 @@ void serial_number(long int value, int digit) {
 }
 
 /*
- *	Function Name	: Init_Timer1
- *	Tittle			: タイマー1のレジスタ設定
- *	Input			:	なし
- *	Output			: なし
- *	Descripution	: CTCモードで割り込みを発生させる
- *	ISR(TIMER1_OVF_vect)
- */
+*	Function Name	: Init_Timer1
+*	Tittle			: タイマー1のレジスタ設定
+*	Input			:	なし
+*	Output			: なし
+*	Descripution	: CTCモードで割り込みを発生させる
+*	ISR(TIMER1_OVF_vect)
+*/
 void Init_Timer1(void)
 {
 	//TCCR1A(Timer Counter1 Control Register A)
@@ -907,7 +920,7 @@ void Init_Timer1(void)
 	//		分周は1/64
 	//		20MHz/64 ==> 約312.5kHz(3.2us)
 	//		#2 = 0, #1 = 1, #0 = 1
-	//		
+	//
 	TCCR1B = 0b00001011;
 	
 	//TCNT1(Timer Counter1)

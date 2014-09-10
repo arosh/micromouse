@@ -135,27 +135,12 @@ void lcd_data(int asci)							//4bitずつ送信
 //     lcd_number(321, 2) => 21
 //     lcd_number(321, 4) => 0321
 void lcd_number(long int value, int digit) {
-	int i;
-	long int base = 1;
-
-	for(i = 0; i < digit - 1; ++i) {
-		base *= 10;
-	}
-	
-	if(value >= 0){
-		lcd_str(" ");
-		for(i = 0; i < digit; ++i) {
-			lcd_data(0x30 + (value / base) % 10);
-			base /= 10;
-		}
-	}
-	else{
-		value = abs(value);
-		lcd_str("-");
-		for(i = 0; i < digit; ++i) {
-			lcd_data(0x30 + (value / base) % 10);
-			base /= 10;
-		}
+	static char buf[16];
+	int i, len;
+	itoa(value, buf, 10);
+	len = strlen(buf);
+	for(i = 0; i < len; ++i) {
+		lcd_data(buf[i]);
 	}
 }
 // vim: noet ts=4 sw=4 sts=0
