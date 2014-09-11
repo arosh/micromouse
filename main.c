@@ -200,7 +200,7 @@ void sensor_convert(void)
 
 void one_forward(void)
 {
-	if((movement_right <= 550) && (movement_left <= 550)){
+	if((movement_right <= 600) && (movement_left <= 600)){
 		//速度の誤差にかけるゲイン
 		const float Kp_velocity_right = 0.07;
 		const float Kp_velocity_left  = 0.085;
@@ -503,6 +503,20 @@ int mode_sel(void)
 	return 4;
 }
 
+void lcd_check(void){
+	sensor_convert();
+	lcd_pos(0,0);
+	lcd_str("mode");
+	lcd_pos(0,5);
+	lcd_number(mode, 1);
+	lcd_pos(0,8);
+	lcd_number(loop_count, 5);
+	lcd_pos(1,0);
+	lcd_number(movement_left, 5);
+	lcd_pos(1,9);
+	lcd_number(movement_right, 5);
+}
+
 // センサ用割り込み
 ISR(TIMER1_COMPA_vect){
 	ave_speed();		//速度の平均をとる
@@ -514,7 +528,7 @@ ISR(TIMER1_COMPA_vect){
 		movement_right += spd_R[time] * 0.01;	//速度を積分
 		movement_left  += spd_L[time] * 0.01;
 		
-		one_forward();
+		forward();
 		break;
 		
 		case 2:
@@ -676,6 +690,17 @@ int main(void)
 	loop_count = 0;
 	
 	while(1){
+		
+		//モードによって動作を切り替える
+		//	1: 前進
+		//	2: 右90度回転
+		//	3: 左90度回転
+		//	4: 袋小路(90度回転)
+		//	5: ケツをつける
+		//	6: ケツをつけた分、前に前進
+		//	7: センサによるブレーキ
+		
+		
 		sensor_convert();	//AD変換値を距離[mm]に変換
 		
 		mode = 1;
@@ -684,22 +709,12 @@ int main(void)
 		movement_right = 0;
 		
 		while(!(abs(movement_left) >= 10 && abs(movement_right) >= 10 && sensor_distance_AVE_LF_RF <= 65) &&
-			  !(abs(movement_left) >= 550 && abs(movement_right) >= 550)) {
-				sensor_convert();
-				lcd_pos(0,0);
-				lcd_str("mode");
-				lcd_pos(0,5);
-				lcd_number(mode, 1);
-				lcd_pos(0,8);
-				lcd_number(loop_count, 5);
-				lcd_pos(1,0);
-				lcd_number(movement_left, 5);
-				lcd_pos(1,9);
-				lcd_number(movement_right, 5);
+			  !(abs(movement_left) >= 600 && abs(movement_right) >= 600)) {
+				lcd_check();
 		}
 		
-		mode = 7;
-		_delay_ms(500);
+		movement_right = 0;
+		movement_left  = 0;
 		
 		mode = mode_sel();
 		if(mode == 4) {
@@ -708,17 +723,7 @@ int main(void)
 			movement_right = 0;
 		
 			while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 40 && abs(error_turn_right) <= 40)) {
-				sensor_convert();
-				lcd_pos(0,0);
-				lcd_str("mode");
-				lcd_pos(0,5);
-				lcd_number(mode, 1);
-				lcd_pos(0,8);
-				lcd_number(loop_count, 5);
-				lcd_pos(1,0);
-				lcd_number(movement_left, 5);
-				lcd_pos(1,9);
-				lcd_number(movement_right, 5);
+				lcd_check();
 			}
 			
 			if(need_hips) {
@@ -729,17 +734,7 @@ int main(void)
 				movement_right = 0;
 			
 				while(!(time_hips >= 50)) {
-					sensor_convert();
-					lcd_pos(0,0);
-					lcd_str("mode");
-					lcd_pos(0,5);
-					lcd_number(mode, 1);
-					lcd_pos(0,8);
-					lcd_number(loop_count, 5);
-					lcd_pos(1,0);
-					lcd_number(movement_left, 5);
-					lcd_pos(1,9);
-					lcd_number(movement_right, 5);
+					lcd_check();
 				}
 			
 				mode = 6;
@@ -748,17 +743,7 @@ int main(void)
 				movement_right = 0;
 			
 				while(!(abs(movement_left) >= 5 && abs(movement_right) >= 5)) {
-					sensor_convert();
-					lcd_pos(0,0);
-					lcd_str("mode");
-					lcd_pos(0,5);
-					lcd_number(mode, 1);
-					lcd_pos(0,8);
-					lcd_number(loop_count, 5);
-					lcd_pos(1,0);
-					lcd_number(movement_left, 5);
-					lcd_pos(1,9);
-					lcd_number(movement_right, 5);
+					lcd_check();
 				}
 			}
 			
@@ -771,17 +756,7 @@ int main(void)
 			movement_right = 0;
 			
 			while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 40 && abs(error_turn_right) <= 40)) {
-				sensor_convert();
-				lcd_pos(0,0);
-				lcd_str("mode");
-				lcd_pos(0,5);
-				lcd_number(mode, 1);
-				lcd_pos(0,8);
-				lcd_number(loop_count, 5);
-				lcd_pos(1,0);
-				lcd_number(movement_left, 5);
-				lcd_pos(1,9);
-				lcd_number(movement_right, 5);
+				lcd_check();
 			}
 			
 			if(need_hips) {
@@ -791,40 +766,18 @@ int main(void)
 				movement_right = 0;
 			
 				while(!(time_hips >= 50)) {
-					sensor_convert();
-					lcd_pos(0,0);
-					lcd_str("mode");
-					lcd_pos(0,5);
-					lcd_number(mode, 1);
-					lcd_pos(0,8);
-					lcd_number(loop_count, 5);
-					lcd_pos(1,0);
-					lcd_number(movement_left, 5);
-					lcd_pos(1,9);
-					lcd_number(movement_right, 5);
+					lcd_check();
 				}
-			
 				mode = 6;
 				time_hips = 0;
 				movement_left  = 0;
 				movement_right = 0;
 			
 				while(!(abs(movement_left) >= 5 && abs(movement_right) >= 5)) {
-					sensor_convert();
-					lcd_pos(0,0);
-					lcd_str("mode");
-					lcd_pos(0,5);
-					lcd_number(mode, 1);
-					lcd_pos(0,8);
-					lcd_number(loop_count, 5);
-					lcd_pos(1,0);
-					lcd_number(movement_left, 5);
-					lcd_pos(1,9);
-					lcd_number(movement_right, 5);
+					lcd_check();
 				}
 			}
-		}
-				
+		}	
 	}
 
 	return 0;
