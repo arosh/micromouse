@@ -155,10 +155,11 @@ volatile int turn_select = -1;	// 1なら右回転	-1なら左回転
 
 volatile char hips_flag = 0;
 
-volatile char mode = 1;
+volatile char mode = 8;
 volatile int time_hips;
 volatile char old_mode = 0;
 volatile bool need_hips;
+volatile int masu = 0;
 
 void ave_speed(void)
 {
@@ -170,7 +171,7 @@ void ave_speed(void)
 	
 	//この割り込み関数は10msごとに読み込まれるのでパルスカウントの差を10ms[0.01s]で割ることでパルス速度[pulse/s]を求めることができる
 	spd_R[time] = (now_pulse_R - old_pulse_R) * 100;
-	spd_L[time] = (now_pulse_L - old_pulse_L) * 100 ;
+	spd_L[time] = (now_pulse_L - old_pulse_L) * 100;
 	old_pulse_R = now_pulse_R;
 	old_pulse_L = now_pulse_L;
 	
@@ -198,62 +199,6 @@ void sensor_convert(void)
 	sensor_distance_AVE_LF_RF = (sensor_distance_LF+sensor_distance_RF)*0.5;
 }
 
-void one_forward(void)
-{
-	if((movement_right <= 600) && (movement_left <= 600)){
-		//速度の誤差にかけるゲイン
-		const float Kp_velocity_right = 0.07;
-		const float Kp_velocity_left  = 0.085;
-		
-		//左右の移動量の誤差にかけるゲイン
-		const float Kp_movement_right = 0.26;
-		const float Kp_movement_left  = 0.26;
-		
-		//目標パルス速度
-		const int preferrance_pluse_velocity_right = 1600;
-		const int preferrance_pluse_velocity_left  = 1600;
-		
-		//目標パルス速度と現在のパルス速度の誤差
-		float error_velocity_left;
-		float error_velocity_right;
-		
-		//左右の移動量の誤差
-		int error_movement_left;
-		int error_movement_right;
-		
-		//目標パルス速度にするための制御量
-		int control_velocity_right;
-		int control_velocity_left;
-		
-		//左右の移動量の誤差に対する制御量
-		int control_movement_right;
-		int control_movement_left;
-		
-		//左右の速度の誤差
-		error_velocity_left  = preferrance_pluse_velocity_left  - ave_spd_L;
-		error_velocity_right = preferrance_pluse_velocity_right - ave_spd_R;
-		
-		//左右の移動量の誤差
-		error_movement_left  = movement_right - movement_left;
-		error_movement_right = movement_left - movement_right;
-		
-		//目標パルス速度にするための制御量
-		control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
-		control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
-		
-		//左右の壁の誤差に対する制御量
-		control_movement_right = (int)(Kp_movement_right * error_movement_right);
-		control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
-		
-		motor_right(control_velocity_right + control_movement_right);
-		motor_left(control_velocity_left  + control_movement_left);
-	}
-	else{
-		motor_brake_left();
-		motor_brake_right();
-	}
-}
-
 void forward_hips(void)
 {
 	//速度の誤差にかけるゲイン
@@ -265,8 +210,8 @@ void forward_hips(void)
 	const float Kp_movement_left  = 0.26;
 		
 	//目標パルス速度
-	const int preferrance_pluse_velocity_right = 1600;
-	const int preferrance_pluse_velocity_left  = 1600;
+	const int preferrance_pluse_velocity_right = 1000;
+	const int preferrance_pluse_velocity_left  = 1000;
 		
 	//目標パルス速度と現在のパルス速度の誤差
 	float error_velocity_left;
@@ -367,10 +312,10 @@ void turn_right(void)
 {
 	volatile int turn_select = 1;	// 1なら右回転	-1なら左回転
 	
-	const float Kp_turn_right = 0.50;
-	const float Kp_turn_left  = 0.55;
-	const float Kd_turn_right = 0.1;
-	const float Kd_turn_left  = 0.1;
+	const float Kp_turn_right = 0.55;
+	const float Kp_turn_left  = 0.60;
+	const float Kd_turn_right = 0.15;
+	const float Kd_turn_left  = 0.15;
 	
 	static int old_error_turn_right = 0;
 	static int old_error_turn_left = 0;
@@ -412,10 +357,10 @@ void turn_left(void)
 {
 	volatile int turn_select = -1;	// 1なら右回転	-1なら左回転
 	
-	const float Kp_turn_right = 0.50;
-	const float Kp_turn_left  = 0.55;
-	const float Kd_turn_right = 0.1;
-	const float Kd_turn_left  = 0.1;
+	const float Kp_turn_right = 0.45;
+	const float Kp_turn_left  = 0.50;
+	const float Kd_turn_right = 0.15;
+	const float Kd_turn_left  = 0.15;
 	
 	static int old_error_turn_right = 0;
 	static int old_error_turn_left = 0;
@@ -455,18 +400,6 @@ void turn_left(void)
 
 void hips(void)
 {
-	//const float Kp_hips_R = 0.1;
-	//const float Kp_hips_L = 0.1;
-	//
-	//int prefer_hips_R = 135;
-	//int prefer_hips_L = 135;
-	//
-	//int error_hips_R;
-	//int error_hips_L;
-	//
-	//int P_control_hips_R;
-	//int P_control_hips_L;
-	//
 	motor_left(-45);
 	motor_right(-45);
 	time_hips++;
@@ -510,7 +443,7 @@ void lcd_check(void){
 	lcd_pos(0,5);
 	lcd_number(mode, 1);
 	lcd_pos(0,8);
-	lcd_number(loop_count, 5);
+	lcd_number(masu, 5);
 	lcd_pos(1,0);
 	lcd_number(movement_left, 5);
 	lcd_pos(1,9);
@@ -520,7 +453,6 @@ void lcd_check(void){
 // センサ用割り込み
 ISR(TIMER1_COMPA_vect){
 	ave_speed();		//速度の平均をとる
-	//sensor_convert();	//AD変換値を距離[mm]に変換
 	
 	switch(mode){
 		
@@ -555,6 +487,12 @@ ISR(TIMER1_COMPA_vect){
 		
 		case 7:
 		speed_down();
+		break;
+		
+		case 8:
+		//何もしないで止まる.
+		motor_brake_left();
+		motor_brake_right();
 		break;
 	}
 }
@@ -672,22 +610,20 @@ int main(void)
 	//AIの初期化
 	agent_init();
 	
+	//ADCの初期化
+	Init_ADC();
+	
 	//UBRR0  = 129;
 	//UCSR0A = 0b00000000;
 	//UCSR0B = 0b00011000;
 	//UCSR0C = 0b00000110;
+	sei();
 	
-	//AD変換レジスタ設定
 	loop_until_bit_is_clear(PINB,PINB2);		//スタートスイッチ(青色)が押されるまで待機
 	
-	beep();										//ブザーを鳴らす
-	
-	sei();		//割り込み許可
-	
-	motor_brake_left();
-	motor_brake_right();
-	_delay_ms(500);
-	loop_count = 0;
+	beep_start();										//ブザーを鳴らす
+	_delay_ms(1000);
+	beep_end();
 	
 	while(1){
 		
@@ -708,21 +644,24 @@ int main(void)
 		movement_left  = 0;
 		movement_right = 0;
 		
-		while(!(abs(movement_left) >= 10 && abs(movement_right) >= 10 && sensor_distance_AVE_LF_RF <= 65) &&
+		while(!(abs(movement_left) >= 10 && abs(movement_right) >= 10 && sensor_distance_AVE_LF_RF <= 60) &&
 			  !(abs(movement_left) >= 600 && abs(movement_right) >= 600)) {
 				lcd_check();
 		}
+		
+		masu++;
 		
 		movement_right = 0;
 		movement_left  = 0;
 		
 		mode = mode_sel();
+		
 		if(mode == 4) {
 			time_hips = 0;
 			movement_left  = 0;
 			movement_right = 0;
 		
-			while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 40 && abs(error_turn_right) <= 40)) {
+			while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 35 && abs(error_turn_right) <= 35)) {
 				lcd_check();
 			}
 			
@@ -755,7 +694,7 @@ int main(void)
 			movement_left  = 0;
 			movement_right = 0;
 			
-			while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 40 && abs(error_turn_right) <= 40)) {
+			while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 35 && abs(error_turn_right) <= 35)) {
 				lcd_check();
 			}
 			
