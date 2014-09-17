@@ -27,8 +27,6 @@ void agent_init(void);
 void agent_learn(void);
 
 // 探索走行のために、次に行うべきアクションを考える
-enum action_t agent_explore(const bool adachi);
-
-void agent_compute_shortest_path(const bool to_start_area);
+enum action_t agent_explore(void);
 
 #endif /* AVR_LCD_H_ */
