@@ -84,7 +84,7 @@ enum action_t agent_explore(void) {
 		}
 
 		// 未踏の地が無かったら、探索終了
-		if ((vy == -1 && vx == -1) || d[vy][vx] == UINT8_MAX) {
+		if ((vy == -1 && vx == -1) || d[vy][vx] == UCHAR_MAX - 1) {
 			break;
 		}
 
