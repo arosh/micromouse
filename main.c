@@ -312,8 +312,8 @@ void turn_right(void)
 {
 	volatile int turn_select = 1;	// 1なら右回転	-1なら左回転
 	
-	const float Kp_turn_right = 0.55;
-	const float Kp_turn_left  = 0.60;
+	const float Kp_turn_right = 0.53;
+	const float Kp_turn_left  = 0.58;
 	const float Kd_turn_right = 0.15;
 	const float Kd_turn_left  = 0.15;
 	
@@ -357,8 +357,8 @@ void turn_left(void)
 {
 	volatile int turn_select = -1;	// 1なら右回転	-1なら左回転
 	
-	const float Kp_turn_right = 0.45;
-	const float Kp_turn_left  = 0.50;
+	const float Kp_turn_right = 0.46;
+	const float Kp_turn_left  = 0.51;
 	const float Kd_turn_right = 0.15;
 	const float Kd_turn_left  = 0.15;
 	
