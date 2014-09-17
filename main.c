@@ -105,7 +105,7 @@ uint8_t sensor_get(void){
 	
 	bool wall_r = sensor_distance_R < 90;
 	bool wall_l = sensor_distance_L < 90;
-	bool wall_f = sensor_distance_AVE_LF_RF < 40;
+	bool wall_f = sensor_distance_AVE_LF_RF < 50;
 	
 	uint8_t x = 0;
 	
@@ -410,7 +410,7 @@ int mode_sel_hidarite(void)
 {
 	bool wall_r = sensor_distance_R < 90;
 	bool wall_l = sensor_distance_L < 90;
-	bool wall_f = sensor_distance_AVE_LF_RF < 40;
+	bool wall_f = sensor_distance_AVE_LF_RF < 45;
 	
 	if(wall_l == false) {
 		prefer_turn_flag = 1;
@@ -441,7 +441,7 @@ void lcd_check(void){
 	
 	bool wall_r = sensor_distance_R < 90;
 	bool wall_l = sensor_distance_L < 90;
-	bool wall_f = sensor_distance_AVE_LF_RF < 40;
+	bool wall_f = sensor_distance_AVE_LF_RF < 50;
 	
 	lcd_pos(0,0);
 	lcd_str("mode");
@@ -453,6 +453,8 @@ void lcd_check(void){
 	lcd_number(wall_f, 1);
 	lcd_pos(0,11);
 	lcd_number(wall_r, 1);
+	lcd_pos(0,13);
+	lcd_number(loop_count,2);
 	lcd_pos(1,0);
 	lcd_number(movement_left, 5);
 	lcd_pos(1,9);
@@ -582,6 +584,10 @@ void hidarite(void)
 			while(!(abs(movement_left) >= 5 && abs(movement_right) >= 5)) {
 				lcd_check();
 			}
+			
+			time_hips = 0;
+			movement_left  = 0;
+			movement_right = 0;
 		}
 		
 		mode = mode_sel_hidarite();
@@ -613,6 +619,10 @@ void hidarite(void)
 			while(!(abs(movement_left) >= 5 && abs(movement_right) >= 5)) {
 				lcd_check();
 			}
+			
+			time_hips = 0;
+			movement_left  = 0;
+			movement_right = 0;
 		}
 	}
 }
@@ -621,9 +631,11 @@ int mode_sel_adchi(void)
 {
 	bool wall_r = sensor_distance_R < 90;
 	bool wall_l = sensor_distance_L < 90;
-	bool wall_f = sensor_distance_AVE_LF_RF < 40;
+	bool wall_f = sensor_distance_AVE_LF_RF < 50;
 	
+	loop_count++;
 	enum action_t ret = agent_explore(true);
+	loop_count++;
 	
 	if(ret == GO_FORWARD){
 		prefer_turn_flag = 0;
@@ -649,6 +661,7 @@ void adachi(void)
 {
 	sensor_convert();	//AD変換値を距離[mm]に変換
 	agent_learn();
+	lcd_check();
 	mode = mode_sel_adchi();
 	
 	if(mode == 1) {
@@ -698,6 +711,8 @@ void adachi(void)
 			movement_right = 0;
 		}
 	}
+	
+	mode = 8;
 }
 
 
@@ -811,6 +826,8 @@ int main(void)
 	beep_start();										//ブザーを鳴らす
 	_delay_ms(1000);
 	beep_end();
+	
+	loop_count = 0;
 	
 	while(1){
 		
