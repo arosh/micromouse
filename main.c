@@ -116,7 +116,7 @@ uint8_t sensor_get(void){
 		sbi(x, 1);
 	}
 	if(wall_r == 1){
-		sbi(x, 2);
+		sbi(x, 3);
 	}
 	
 	return x;
@@ -155,7 +155,7 @@ volatile int turn_select = -1;	// 1なら右回転	-1なら左回転
 
 volatile char hips_flag = 0;
 
-volatile char mode = 8;
+volatile char mode;
 volatile int time_hips;
 volatile char old_mode = 0;
 volatile bool need_hips;
@@ -204,47 +204,47 @@ void forward_hips(void)
 	//速度の誤差にかけるゲイン
 	const float Kp_velocity_right = 0.07;
 	const float Kp_velocity_left  = 0.085;
-		
+	
 	//左右の移動量の誤差にかけるゲイン
 	const float Kp_movement_right = 0.26;
 	const float Kp_movement_left  = 0.26;
-		
+	
 	//目標パルス速度
 	const int preferrance_pluse_velocity_right = 1000;
 	const int preferrance_pluse_velocity_left  = 1000;
-		
+	
 	//目標パルス速度と現在のパルス速度の誤差
 	float error_velocity_left;
 	float error_velocity_right;
-		
+	
 	//左右の移動量の誤差
 	int error_movement_left;
 	int error_movement_right;
-		
+	
 	//目標パルス速度にするための制御量
 	int control_velocity_right;
 	int control_velocity_left;
-		
+	
 	//左右の移動量の誤差に対する制御量
 	int control_movement_right;
 	int control_movement_left;
-		
+	
 	//左右の速度の誤差
 	error_velocity_left  = preferrance_pluse_velocity_left  - ave_spd_L;
 	error_velocity_right = preferrance_pluse_velocity_right - ave_spd_R;
-		
+	
 	//左右の移動量の誤差
 	error_movement_left  = movement_right - movement_left;
 	error_movement_right = movement_left - movement_right;
-		
+	
 	//目標パルス速度にするための制御量
 	control_velocity_right = (int)(Kp_velocity_right * error_velocity_right);
 	control_velocity_left  = (int)(Kp_velocity_left * error_velocity_left);
-		
+	
 	//左右の壁の誤差に対する制御量
 	control_movement_right = (int)(Kp_movement_right * error_movement_right);
 	control_movement_left  = (int)(Kp_movement_left  * error_movement_left);
-		
+	
 	motor_right(control_velocity_right + control_movement_right);
 	motor_left(control_velocity_left  + control_movement_left);
 }
@@ -303,7 +303,7 @@ void forward(void)
 }
 
 void speed_down(void)
-{	
+{
 	motor_brake_right();
 	motor_brake_left();
 }
@@ -357,8 +357,8 @@ void turn_left(void)
 {
 	volatile int turn_select = -1;	// 1なら右回転	-1なら左回転
 	
-	const float Kp_turn_right = 0.46;
-	const float Kp_turn_left  = 0.51;
+	const float Kp_turn_right = 0.48;
+	const float Kp_turn_left  = 0.53;
 	const float Kd_turn_right = 0.15;
 	const float Kd_turn_left  = 0.15;
 	
@@ -406,7 +406,7 @@ void hips(void)
 }
 
 
-int mode_sel(void)
+int mode_sel_hidarite(void)
 {
 	bool wall_r = sensor_distance_R < 90;
 	bool wall_l = sensor_distance_L < 90;
@@ -438,12 +438,21 @@ int mode_sel(void)
 
 void lcd_check(void){
 	sensor_convert();
+	
+	bool wall_r = sensor_distance_R < 90;
+	bool wall_l = sensor_distance_L < 90;
+	bool wall_f = sensor_distance_AVE_LF_RF < 40;
+	
 	lcd_pos(0,0);
 	lcd_str("mode");
 	lcd_pos(0,5);
 	lcd_number(mode, 1);
-	lcd_pos(0,8);
-	lcd_number(masu, 5);
+	lcd_pos(0,7);
+	lcd_number(wall_l, 1);
+	lcd_pos(0,9);
+	lcd_number(wall_f, 1);
+	lcd_pos(0,11);
+	lcd_number(wall_r, 1);
 	lcd_pos(1,0);
 	lcd_number(movement_left, 5);
 	lcd_pos(1,9);
@@ -513,6 +522,184 @@ ISR(TIMER3_COMPA_vect)
 	encoder();
 
 }
+
+void hidarite(void)
+{
+	//モードによって動作を切り替える
+	//	1: 前進
+	//	2: 右90度回転
+	//	3: 左90度回転
+	//	4: 袋小路(90度回転)
+	//	5: ケツをつける
+	//	6: ケツをつけた分、前に前進
+	//	7: センサによるブレーキ
+	
+	
+	sensor_convert();	//AD変換値を距離[mm]に変換
+	
+	mode = 1;
+	time_hips = 0;
+	movement_left  = 0;
+	movement_right = 0;
+	
+	while(!(abs(movement_left) >= 10 && abs(movement_right) >= 10 && sensor_distance_AVE_LF_RF <= 60) &&
+	!(abs(movement_left) >= 600 && abs(movement_right) >= 600)) {
+		lcd_check();
+	}
+	
+	masu++;
+	
+	movement_right = 0;
+	movement_left  = 0;
+	
+	mode = mode_sel_hidarite();
+	
+	if(mode == 4) {
+		time_hips = 0;
+		movement_left  = 0;
+		movement_right = 0;
+		
+		while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 35 && abs(error_turn_right) <= 35)) {
+			lcd_check();
+		}
+		
+		if(need_hips) {
+			
+			mode = 5;
+			time_hips = 0;
+			movement_left  = 0;
+			movement_right = 0;
+			
+			while(!(time_hips >= 50)) {
+				lcd_check();
+			}
+			
+			mode = 6;
+			time_hips = 0;
+			movement_left  = 0;
+			movement_right = 0;
+			
+			while(!(abs(movement_left) >= 5 && abs(movement_right) >= 5)) {
+				lcd_check();
+			}
+		}
+		
+		mode = mode_sel_hidarite();
+	}
+	
+	if(mode == 2 || mode == 3) {
+		time_hips = 0;
+		movement_left  = 0;
+		movement_right = 0;
+		
+		while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 35 && abs(error_turn_right) <= 35)) {
+			lcd_check();
+		}
+		
+		if(need_hips) {
+			mode = 5;
+			time_hips = 0;
+			movement_left  = 0;
+			movement_right = 0;
+			
+			while(!(time_hips >= 50)) {
+				lcd_check();
+			}
+			mode = 6;
+			time_hips = 0;
+			movement_left  = 0;
+			movement_right = 0;
+			
+			while(!(abs(movement_left) >= 5 && abs(movement_right) >= 5)) {
+				lcd_check();
+			}
+		}
+	}
+}
+
+int mode_sel_adchi(void)
+{
+	bool wall_r = sensor_distance_R < 90;
+	bool wall_l = sensor_distance_L < 90;
+	bool wall_f = sensor_distance_AVE_LF_RF < 40;
+	
+	enum action_t ret = agent_explore(true);
+	
+	if(ret == GO_FORWARD){
+		prefer_turn_flag = 0;
+		need_hips = false;
+		return 1;
+	}
+	else if(ret == TURN_RIGHT){
+		prefer_turn_flag = 1;
+		need_hips = wall_l;
+		return 2;
+	}
+	else if(ret == TURN_LEFT){
+		prefer_turn_flag = 1;
+		need_hips = wall_r;
+		return 3;
+	}
+	else if(ret == NO_OPERATION){
+		return 8;
+	}
+}
+
+void adachi(void)
+{
+	sensor_convert();	//AD変換値を距離[mm]に変換
+	agent_learn();
+	mode = mode_sel_adchi();
+	
+	if(mode == 1) {
+		time_hips = 0;
+		movement_left  = 0;
+		movement_right = 0;
+		
+		while(!(abs(movement_left) >= 10 && abs(movement_right) >= 10 && sensor_distance_AVE_LF_RF <= 60) &&
+		!(abs(movement_left) >= 600 && abs(movement_right) >= 600)) {
+			lcd_check();
+		}
+		
+		time_hips = 0;
+		movement_left  = 0;
+		movement_right = 0;
+	}
+	
+	if(mode == 2 || mode == 3) {
+		time_hips = 0;
+		movement_left  = 0;
+		movement_right = 0;
+		
+		while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 35 && abs(error_turn_right) <= 35)) {
+			lcd_check();
+		}
+		
+		if(need_hips) {
+			mode = 5;
+			time_hips = 0;
+			movement_left  = 0;
+			movement_right = 0;
+			
+			while(!(time_hips >= 50)) {
+				lcd_check();
+			}
+			mode = 6;
+			time_hips = 0;
+			movement_left  = 0;
+			movement_right = 0;
+			
+			while(!(abs(movement_left) >= 5 && abs(movement_right) >= 5)) {
+				lcd_check();
+			}
+			
+			time_hips = 0;
+			movement_left  = 0;
+			movement_right = 0;
+		}
+	}
+}
+
 
 int main(void)
 {
@@ -627,96 +814,8 @@ int main(void)
 	
 	while(1){
 		
-		//モードによって動作を切り替える
-		//	1: 前進
-		//	2: 右90度回転
-		//	3: 左90度回転
-		//	4: 袋小路(90度回転)
-		//	5: ケツをつける
-		//	6: ケツをつけた分、前に前進
-		//	7: センサによるブレーキ
-		
-		
-		sensor_convert();	//AD変換値を距離[mm]に変換
-		
-		mode = 1;
-		time_hips = 0;
-		movement_left  = 0;
-		movement_right = 0;
-		
-		while(!(abs(movement_left) >= 10 && abs(movement_right) >= 10 && sensor_distance_AVE_LF_RF <= 60) &&
-			  !(abs(movement_left) >= 600 && abs(movement_right) >= 600)) {
-				lcd_check();
-		}
-		
-		masu++;
-		
-		movement_right = 0;
-		movement_left  = 0;
-		
-		mode = mode_sel();
-		
-		if(mode == 4) {
-			time_hips = 0;
-			movement_left  = 0;
-			movement_right = 0;
-		
-			while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 35 && abs(error_turn_right) <= 35)) {
-				lcd_check();
-			}
-			
-			if(need_hips) {
-			
-				mode = 5;
-				time_hips = 0;
-				movement_left  = 0;
-				movement_right = 0;
-			
-				while(!(time_hips >= 50)) {
-					lcd_check();
-				}
-			
-				mode = 6;
-				time_hips = 0;
-				movement_left  = 0;
-				movement_right = 0;
-			
-				while(!(abs(movement_left) >= 5 && abs(movement_right) >= 5)) {
-					lcd_check();
-				}
-			}
-			
-			mode = mode_sel();
-		}
-		
-		if(mode == 2 || mode == 3) {
-		    time_hips = 0;
-			movement_left  = 0;
-			movement_right = 0;
-			
-			while(!(ave_spd_L == 0 && ave_spd_R == 0 && abs(error_turn_left) <= 35 && abs(error_turn_right) <= 35)) {
-				lcd_check();
-			}
-			
-			if(need_hips) {
-				mode = 5;
-				time_hips = 0;
-				movement_left  = 0;
-				movement_right = 0;
-			
-				while(!(time_hips >= 50)) {
-					lcd_check();
-				}
-				mode = 6;
-				time_hips = 0;
-				movement_left  = 0;
-				movement_right = 0;
-			
-				while(!(abs(movement_left) >= 5 && abs(movement_right) >= 5)) {
-					lcd_check();
-				}
-			}
-		}	
+		//hidarite();
+		adachi();
 	}
 
 	return 0;
