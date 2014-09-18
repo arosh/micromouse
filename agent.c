@@ -34,7 +34,14 @@ static int curY, curX, dir;
 
 void agent_init(void) {
 	// 壁の初期化
-	memset(wall, 0x00, sizeof(wall));
+	for(int y = 0; y < size; ++y) {
+		for(int x = 0; x < size; ++x) {
+			visible[y][x] = false;
+			for(int k = 0; k < size; ++k) {
+				wall[y][x][k] = false;
+			}
+		}
+	}
 	for(int i = 0; i < size; ++i) {
 		// 左
 		wall[i][0][1] = true;
@@ -50,9 +57,6 @@ void agent_init(void) {
 	curY = START_Y;
 	curX = START_X;
 	dir  = START_DIR;
-
-	// 探索関係
-	memset(visible, 0, sizeof(visible));
 }
 
 // to_goalがtrueのとき、ゴールまでの経路を探索する
