@@ -1,4 +1,4 @@
-#define TEST 0
+#define TEST 1
 
 #include <string.h>
 #include <stdint.h>
@@ -20,17 +20,42 @@ static bool visible[MAP_SIZE][MAP_SIZE];
 static const int dy[] = { -1, 0, 1, 0 };
 static const int dx[] = { 0, -1, 0, 1 };
 static unsigned char d[MAP_SIZE][MAP_SIZE];
-static bool vis[MAP_SIZE][MAP_SIZE];
 
-static inline uint8_t check_pos(const int y, const int x) {
+static inline bool check_pos(const int y, const int x) {
 	return 0 <= y && y < size && 0 <= x && x < size;
 }
 
-static inline uint8_t check_goal(const int y, const int x) {
+static inline bool check_goal(const int y, const int x) {
 	return GOAL_Y <= y && y < GOAL_Y + GOAL_H && GOAL_X <= x && x < GOAL_X + GOAL_W;
 }
 
 static int curY, curX, dir;
+
+static int queueTop, queueBottom;
+static int queueX[MAP_SIZE*MAP_SIZE+1];
+static int queueY[MAP_SIZE*MAP_SIZE+1];
+static bool inQueue[MAP_SIZE][MAP_SIZE];
+
+static void queueInit(void) {
+	queueTop = 0;
+	queueBottom = 0;
+}
+
+static void queueEnqueue(const int y, const int x) {
+	queueY[queueTop] = y;
+	queueX[queueTop] = x;
+	queueTop = (queueTop + 1) % (MAP_SIZE*MAP_SIZE+1);
+}
+
+static void queueDequeue(int *y, int *x) {
+	*y = queueY[queueBottom];
+	*x = queueX[queueBottom];
+	queueBottom = (queueBottom + 1) % (MAP_SIZE*MAP_SIZE+1);
+}
+
+static bool queueEmpty(void) {
+	return queueBottom == queueTop;
+}
 
 void agent_init(void) {
 	// 壁の初期化
@@ -62,37 +87,25 @@ void agent_init(void) {
 // to_goalがtrueのとき、ゴールまでの経路を探索する
 // to_goalがfalseのとき、未探索の地点までの経路を探索する
 enum action_t agent_explore(void) {
+	queueInit();
 	for(int y = 0; y < size; ++y) {
 		for(int x = 0; x < size; ++x) {
-			vis[y][x] = false;
 			if(check_goal(y, x)) {
 				d[y][x] = 0;
+				inQueue[y][x] = true;
+				queueEnqueue(y, x);
 			}
 			else {
 				d[y][x] = UCHAR_MAX - 1;
+				inQueue[y][x] = false;
 			}
 		}
 	}
 
-	// ダイクストラ開始
-	while(true) {
-		int vy = -1, vx = -1;
-
-		for (int y = 0; y < size; ++y) {
-			for (int x = 0; x < size; ++x) {
-				if (vis[y][x] == false && ((vy == -1 && vx == -1) || d[vy][vx] > d[y][x])) {
-					vy = y;
-					vx = x;
-				}
-			}
-		}
-
-		// 未踏の地が無かったら、探索終了
-		if ((vy == -1 && vx == -1) || d[vy][vx] == UCHAR_MAX - 1) {
-			break;
-		}
-
-		vis[vy][vx] = true;
+	while(queueEmpty() == false) {
+		int vy, vx;
+		queueDequeue(&vy, &vx);
+		inQueue[vy][vx] = false;
 
 		for (int k = 0; k < 4; k++) {
 			if (wall[vy][vx][k] == false) {
@@ -100,6 +113,10 @@ enum action_t agent_explore(void) {
 				int nx = vx + dx[k];
 				if(d[ny][nx] > d[vy][vx] + 1) {
 					d[ny][nx] = d[vy][vx] + 1;
+					if(inQueue[ny][nx] == false) {
+						inQueue[ny][nx] = true;
+						queueEnqueue(ny, nx);
+					}
 				}
 			}
 		}
