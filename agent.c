@@ -1,4 +1,4 @@
-#define TEST 1
+#define TEST 0
 
 #include <string.h>
 #include <stdint.h>
@@ -62,7 +62,7 @@ void agent_init(void) {
 	for(int y = 0; y < size; ++y) {
 		for(int x = 0; x < size; ++x) {
 			visible[y][x] = false;
-			for(int k = 0; k < size; ++k) {
+			for(int k = 0; k < 4; ++k) {
 				wall[y][x][k] = false;
 			}
 		}
@@ -183,9 +183,9 @@ void agent_learn(void) {
 #if TEST
 uint8_t sensor_get(void) {
 	bool w[3][3][4] = {
-		{ { 1, 1, 0, 1 }, { 1, 1, 0, 0 }, { 1, 0, 1, 1 } },
-		{ { 0, 1, 0, 0 }, { 0, 0, 0, 1 }, { 1, 1, 0, 1 } },
-		{ { 0, 1, 1, 1 }, { 0, 1, 1, 0 }, { 0, 0, 1, 1 } }
+		{ { 1, 1, 0, 1 }, { 1, 1, 1, 0 }, { 1, 0, 0, 1 } },
+		{ { 0, 1, 0, 0 }, { 1, 0, 0, 0 }, { 0, 0, 1, 1 } },
+		{ { 0, 1, 1, 1 }, { 0, 1, 1, 0 }, { 1, 0, 1, 1 } }
 	};
 	uint8_t r = 0;
 	if(w[curY][curX][dir]) sbi(r,0);
